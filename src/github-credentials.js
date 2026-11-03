@@ -1,0 +1,7 @@
+// Connection credentials belong to this browser, never to XLSX or the source repository.
+const DB='voxys.github.connection';
+async function database(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('connection');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(Error('Браузер не разрешил запомнить подключение.'));});}
+async function transact(mode,operation){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('connection',mode),req=operation(tx.objectStore('connection'));let value;req.onsuccess=()=>{value=req.result;};tx.oncomplete=()=>resolve(value);tx.onabort=tx.onerror=()=>reject(Error('Не удалось сохранить настройки подключения.'));});}finally{db.close();}}
+export async function rememberConnection(config,token){const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']),iv=crypto.getRandomValues(new Uint8Array(12));const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(token));await transact('readwrite',s=>s.put({config,key,iv,encrypted},'active'));}
+export async function restoreConnection(){const record=await transact('readonly',s=>s.get('active'));if(!record)return null;const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:record.iv},record.key,record.encrypted);return {config:record.config,token:new TextDecoder().decode(bytes)};}
+export async function forgetConnection(){await transact('readwrite',s=>s.delete('active'));}

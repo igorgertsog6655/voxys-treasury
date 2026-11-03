@@ -10,7 +10,7 @@ export function toBase64(bytes){const array=new Uint8Array(bytes);let text='';fo
 export function fromBase64(text){return Uint8Array.from(atob(text.replace(/\s/g,'')),c=>c.charCodeAt(0));}
 export class GitHubStore {
   #token;#fetch;#sha=null;#branch='';#loaded=false;
-  constructor(config,token,fetcher=globalThis.fetch){this.config=validateGitHubConfig(config);if(!token?.trim())throw Error('Укажите токен доступа GitHub.');this.#token=token.trim();this.#fetch=fetcher;}
+  constructor(config,token,fetcher=globalThis.fetch.bind(globalThis)){this.config=validateGitHubConfig(config);if(!token?.trim())throw Error('Укажите токен доступа GitHub.');this.#token=token.trim();this.#fetch=fetcher;}
   async #request(suffix='',options={}){
     const response=await this.#fetch(`https://api.github.com/repos/${this.config.repository}${suffix}`,{...options,cache:'no-store',redirect:'error',headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${this.#token}`,'X-GitHub-Api-Version':'2026-03-10',...(options.body?{'Content-Type':'application/json'}:{})},signal:AbortSignal.timeout(30000)});
     if(response.status===404&&suffix.startsWith('/contents/')&&!options.method)return null;

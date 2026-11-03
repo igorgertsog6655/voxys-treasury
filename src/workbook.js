@@ -11,7 +11,7 @@ function sheet(rows,fields,X) {
 }
 export function toWorkbook(state,X=globalThis.XLSX) {
   validateState(state);const wb=X.utils.book_new();
-  const tasks=state.tasks.map(t=>({...t,due:new Date(`${t.due}T00:00:00Z`)}));
+  const tasks=state.tasks.map(t=>({...t,due:t.due?new Date(`${t.due}T00:00:00Z`):''}));
   const ws=sheet(tasks,taskFields,X);for(let i=0;i<tasks.length;i++){const c=ws[`C${i+2}`];if(c)c.z='dd.mm.yyyy';}
   X.utils.book_append_sheet(wb,ws,'Задачи');
   X.utils.book_append_sheet(wb,sheet(state.history,histFields,X),'История');
@@ -41,3 +41,4 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   const ids=new Map(s.tasks.map(t=>[t.id,t]));for(const l of readRows(wb,'Результаты',{taskId:'ID задачи',url:'Ссылка'},X)){const t=ids.get(String(l.taskId));if(!t)throw Error('Ссылка относится к неизвестной задаче.');t.links.push(String(l.url));}
   return validateState(s);
 }
+

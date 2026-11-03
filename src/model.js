@@ -5,11 +5,11 @@ export const blankState = () => ({schema:1,revision:0,tasks:[],history:[],commen
 export const uid = () => crypto.randomUUID();
 export function today() { const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Novosibirsk',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); return ['year','month','day'].map(k=>p.find(x=>x.type===k).value).join('-'); }
 export function isDate(s) { return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0,10)===s; }
-export const overdue = t => t.status!=='Завершена' && t.due<today();
+export const overdue = t => t.status!=='Завершена' && !!t.due && t.due<today();
 export function safeLink(value) { try { const u=new URL(value);return ['https:','http:'].includes(u.protocol) ? u.href : null; } catch { return null; } }
 export function validateTask(t) {
   if(!t.title?.trim()||!t.owner?.trim()||!t.holder?.trim()) throw Error('Укажите название, основного ответственного и текущего исполнителя.');
-  if(!isDate(t.due)) throw Error('Укажите корректный срок задачи.');
+  if(typeof t.due!=='string'||(t.due!==''&&!isDate(t.due))) throw Error('Укажите корректный срок задачи.');
   if(!STATUSES.includes(t.status)||!PRIORITIES.includes(t.priority)) throw Error('Неизвестный статус или приоритет.');
   if(!Array.isArray(t.links)||t.links.some(l=>!safeLink(l))) throw Error('Каждая ссылка должна начинаться с https:// или http://.');
   for(const [key,limit] of Object.entries({title:250,description:15000,owner:120,holder:120,stage:500,nextStep:1000})) if(typeof t[key]!=='string'||t[key].length>limit) throw Error(`Проверьте поле «${FIELDS[key]}» (до ${limit} символов).`);
@@ -37,3 +37,4 @@ export function validateState(s) {
   for(const c of s.comments)if(typeof c.text!=='string'||!c.text.trim())throw Error('Пустой комментарий.');
   return s;
 }
+

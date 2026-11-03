@@ -1,14 +1,15 @@
 export const STATUSES = ['Бэклог', 'В работе', 'Завершена'];
 export const PRIORITIES = ['Обычный', 'Высокий', 'Низкий'];
 export const FIELDS = {title:'Задача',description:'Описание',questions:'Вопросы для уточнения',due:'Срок',owner:'Основной ответственный',holder:'У кого сейчас',status:'Статус',stage:'Текущий этап',nextStep:'Следующий шаг',priority:'Приоритет',completedAt:'Завершена в'};
-export const blankState = () => ({schema:3,revision:0,tasks:[],history:[],comments:[],people:[]});
-export function migrateState(s) {const next=structuredClone(s);if(next.schema===1){next.schema=2;next.people=[];}if(next.schema===2)next.schema=3;if(next.schema===3&&Array.isArray(next.tasks))for(const t of next.tasks){t.ownerId??='';t.holderId??='';t.questions??='';}return next;}
+export const blankState = () => ({schema:4,revision:0,tasks:[],history:[],comments:[],people:[]});
+export function migrateState(s) {const next=structuredClone(s);if(next.schema===1){next.schema=2;next.people=[];}if(next.schema===2)next.schema=3;if(next.schema===3)next.schema=4;if(next.schema===4&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{t.ownerId??='';t.holderId??='';t.questions??='';t.sortOrder??=i;});return next;}
 export const uid = () => crypto.randomUUID();
 export function today() { const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Novosibirsk',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); return ['year','month','day'].map(k=>p.find(x=>x.type===k).value).join('-'); }
 export function isDate(s) { return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0,10)===s; }
 export const overdue = t => t.status!=='Завершена' && !!t.due && t.due<today();
 export function safeLink(value) { try { const u=new URL(value);return ['https:','http:'].includes(u.protocol) ? u.href : null; } catch { return null; } }
 export function validateTask(t) {
+  if(!Number.isSafeInteger(t.sortOrder)||t.sortOrder<0)throw Error('Некорректный порядок задачи.');
   if(!t.title?.trim()||!t.owner?.trim()||!t.holder?.trim()) throw Error('Укажите название, основного ответственного и текущего исполнителя.');
   if(typeof t.due!=='string'||(t.due!==''&&!isDate(t.due))) throw Error('Укажите корректный срок задачи.');
   if(!STATUSES.includes(t.status)||!PRIORITIES.includes(t.priority)) throw Error('Неизвестный статус или приоритет.');
@@ -19,7 +20,7 @@ export function saveTask(state, input, author, comment='') {
   author=author.trim(); if(!author) throw Error('Укажите автора изменения.');
   if(author.length>120||comment.length>15000) throw Error('Слишком длинное имя автора или комментарий.');
   const next=structuredClone(state), now=new Date().toISOString(), old=next.tasks.find(t=>t.id===input.id);
-  const task={...input,questions:input.questions??old?.questions??'',ownerId:input.ownerId||'',holderId:input.holderId||'',id:old?.id||uid(),createdAt:old?.createdAt||now,updatedAt:now,completedAt:input.status==='Завершена'?(old?.completedAt||now):''};
+  const task={...input,sortOrder:input.sortOrder??old?.sortOrder??(Math.max(-1,...next.tasks.map(t=>t.sortOrder??-1))+1),questions:input.questions??old?.questions??'',ownerId:input.ownerId||'',holderId:input.holderId||'',id:old?.id||uid(),createdAt:old?.createdAt||now,updatedAt:now,completedAt:input.status==='Завершена'?(old?.completedAt||now):''};
   for(const key of ['owner','holder'])if(task[key+'Id']){const p=(next.people||[]).find(p=>p.id===task[key+'Id']);if(!p)throw Error('Исполнитель не найден в справочнике.');if(!p.active&&task[key+'Id']!==old?.[key+'Id'])throw Error('Архивного исполнителя нельзя назначить заново.');task[key]=p.fullName;}
   validateTask(task);
   const changes=old ? Object.entries(FIELDS).filter(([k])=>old[k]!==task[k]).map(([k,label])=>({field:label,before:String(old[k]||''),after:String(task[k]||'')})) : [{field:'Создание задачи',before:'',after:`${task.title}\nСтатус: ${task.status}\nСрок: ${task.due}\nОтветственный: ${task.owner}\nУ кого сейчас: ${task.holder}`}];
@@ -34,10 +35,10 @@ export function saveTask(state, input, author, comment='') {
 export function addComment(state,taskId,author,text) {if(!state.tasks.some(t=>t.id===taskId)) throw Error('Задача не найдена.');if(!author.trim()||!text.trim()) throw Error('Заполните автора и комментарий.');if(author.length>120||text.length>15000) throw Error('Слишком длинное имя или комментарий.');const next=structuredClone(state);next.comments.push({id:uid(),taskId,at:new Date().toISOString(),author:author.trim(),text:text.trim()});next.revision++;return next;}
 export function validateState(s) {
   s=migrateState(s);
-  if(s?.schema!==3||!Number.isSafeInteger(s.revision)||s.revision<0||!Array.isArray(s.tasks)||!Array.isArray(s.history)||!Array.isArray(s.comments)||!Array.isArray(s.people)) throw Error('Формат данных не поддерживается.');
+  if(s?.schema!==4||!Number.isSafeInteger(s.revision)||s.revision<0||!Array.isArray(s.tasks)||!Array.isArray(s.history)||!Array.isArray(s.comments)||!Array.isArray(s.people)) throw Error('Формат данных не поддерживается.');
   const personIds=new Set(),emails=new Set();for(const p of s.people){validatePerson(p);if(!p.id||personIds.has(p.id)||emails.has(p.email.toLowerCase()))throw Error('Повторяющийся ID или электронный адрес исполнителя.');personIds.add(p.id);emails.add(p.email.toLowerCase());}
   for(const t of s.tasks)for(const k of ['ownerId','holderId'])if(t[k]&&!personIds.has(t[k]))throw Error('В задаче указан неизвестный исполнитель.');
-  const ids=new Set(); for(const t of s.tasks){validateTask(t);if(!t.id||ids.has(t.id))throw Error('Пустой или повторяющийся ID задачи.');ids.add(t.id);for(const k of ['createdAt','updatedAt'])if(!t[k]||!Number.isFinite(Date.parse(t[k])))throw Error('Некорректная дата записи.');}
+  const ids=new Set(),orders=new Set(); for(const t of s.tasks){validateTask(t);if(orders.has(t.sortOrder))throw Error('Повторяющийся порядок задач.');orders.add(t.sortOrder);if(!t.id||ids.has(t.id))throw Error('Пустой или повторяющийся ID задачи.');ids.add(t.id);for(const k of ['createdAt','updatedAt'])if(!t[k]||!Number.isFinite(Date.parse(t[k])))throw Error('Некорректная дата записи.');}
   for(const rows of [s.history,s.comments]){const keys=new Set();for(const r of rows){if(!ids.has(r.taskId)||!r.id||keys.has(r.id)||!r.author||!r.at||!Number.isFinite(Date.parse(r.at)))throw Error('Повреждена история или комментарии.');keys.add(r.id);}}
   for(const h of s.history)for(const k of ['field','before','after'])if(typeof h[k]!=='string')throw Error('Повреждено изменение в истории.');
   for(const c of s.comments)if(typeof c.text!=='string'||!c.text.trim())throw Error('Пустой комментарий.');
@@ -45,4 +46,7 @@ export function validateState(s) {
 }
 export function validatePerson(p){if(typeof p.fullName!=='string'||!p.fullName.trim()||p.fullName.length>180)throw Error('Укажите ФИО (до 180 символов).');if(typeof p.position!=='string'||!p.position.trim()||p.position.length>200)throw Error('Укажите должность (до 200 символов).');if(typeof p.email!=='string'||p.email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))throw Error('Укажите корректный электронный адрес.');if(typeof p.active!=='boolean')throw Error('Некорректный статус исполнителя.');}
 export function savePerson(state,input,author){const next=validateState(state),old=next.people.find(p=>p.id===input.id);const p={id:old?.id||uid(),fullName:input.fullName.trim(),email:input.email.trim(),position:input.position.trim(),active:input.active??true};validatePerson(p);if(next.people.some(x=>x.id!==p.id&&x.email.toLowerCase()===p.email.toLowerCase()))throw Error('Исполнитель с таким электронным адресом уже есть.');if(old)next.people[next.people.findIndex(x=>x.id===p.id)]=p;else next.people.push(p);for(const task of [...next.tasks]){const changed={...task};if(task.ownerId===p.id)changed.owner=p.fullName;if(task.holderId===p.id)changed.holder=p.fullName;if(changed.owner!==task.owner||changed.holder!==task.holder){const updated=saveTask(next,changed,author,'ФИО обновлено в справочнике исполнителей.');next.tasks=updated.tasks;next.history=updated.history;next.comments=updated.comments;}}next.revision++;return validateState(next);}
+
+
+export function moveTask(state,draggedId,targetId,after,author){if(draggedId===targetId)return state;if(!author?.trim())throw Error('Укажите автора изменения.');const next=validateState(state),ordered=[...next.tasks].sort((a,b)=>a.sortOrder-b.sortOrder);const source=ordered.findIndex(t=>t.id===draggedId);if(source<0||!ordered.some(t=>t.id===targetId))throw Error('Задача для переноса не найдена.');const [moved]=ordered.splice(source,1);const destination=ordered.findIndex(t=>t.id===targetId)+(after?1:0);ordered.splice(destination,0,moved);if(source===destination)return state;ordered.forEach((t,i)=>{t.sortOrder=i;});const now=new Date().toISOString();moved.updatedAt=now;next.tasks=ordered;next.history.push({id:uid(),taskId:moved.id,at:now,author:author.trim(),field:'Порядок приоритета в реестре',before:String(source+1),after:String(destination+1)});next.revision++;return next;}
 

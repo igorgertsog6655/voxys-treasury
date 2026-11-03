@@ -1,0 +1,11 @@
+import {moveTask} from './model.js';
+export function createTaskOrdering({getState,commit,canEdit,isManual,toast,isFullySaved}){
+  let dragged=null;
+  const clear=()=>document.querySelectorAll('[data-task-row]').forEach(row=>row.classList.remove('drop-before','drop-after','task-dragging'));
+  async function place(id,target,after){if(!canEdit())return toast('Дождитесь завершения сохранения.');try{const next=moveTask(getState(),id,target,after,localStorage.getItem('voxys.author')||'Игорь Герцог');if(next!==getState())await commit(next);if(isFullySaved())toast('Порядок приоритета сохранён');}catch(err){toast(err.message);}}
+  document.addEventListener('dragstart',e=>{const handle=e.target.closest('[data-drag-task]');if(!handle)return;if(!canEdit()||!isManual()){e.preventDefault();return toast('Для переноса выберите сортировку «Мой порядок» и дождитесь сохранения.');}dragged=handle.dataset.dragTask;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragged);handle.closest('[data-task-row]').classList.add('task-dragging');});
+  document.addEventListener('dragover',e=>{if(!dragged)return;const row=e.target.closest('[data-task-row]');if(!row||row.dataset.taskRow===dragged)return;e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.drop-before,.drop-after').forEach(el=>el.classList.remove('drop-before','drop-after'));const rect=row.getBoundingClientRect(),after=e.clientY>rect.top+rect.height/2;row.classList.add(after?'drop-after':'drop-before');});
+  document.addEventListener('drop',e=>{if(!dragged)return;const row=e.target.closest('[data-task-row]'),id=dragged;dragged=null;if(row){e.preventDefault();const rect=row.getBoundingClientRect(),after=e.clientY>rect.top+rect.height/2;clear();place(id,row.dataset.taskRow,after);}else clear();});
+  document.addEventListener('dragend',()=>{dragged=null;clear();});
+  document.addEventListener('keydown',e=>{const handle=e.target.closest('[data-drag-task]');if(!handle||!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key)||!isManual())return;e.preventDefault();const rows=[...document.querySelectorAll('[data-task-row]')],i=rows.findIndex(r=>r.dataset.taskRow===handle.dataset.dragTask),target=rows[i+(e.key==='ArrowUp'?-1:1)];if(target)place(handle.dataset.dragTask,target.dataset.taskRow,e.key==='ArrowDown');});
+}

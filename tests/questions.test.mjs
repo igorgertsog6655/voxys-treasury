@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+import {blankState,saveTask,validateState} from '../src/model.js';
+import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
+const ctx={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date};vm.createContext(ctx);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),ctx);const X=ctx.XLSX;
+const task={title:'Проверить CF',description:'Исходное описание',due:'',owner:'Не назначен',holder:'Не назначен',status:'Бэклог',priority:'Обычный',stage:'',nextStep:'',links:[]};
+test('Вопросы сохраняются отдельным полем, меняются с историей и очищаются',()=>{let s=saveTask(blankState(),{...task,questions:'1. Уточнить дату\n2. Подтвердить сумму'},'Игорь');assert.equal(s.tasks[0].description,'Исходное описание');s=saveTask(s,{...s.tasks[0],questions:'Подтвердить сумму'},'Игорь');const h=s.history.at(-1);assert.equal(h.field,'Вопросы для уточнения');assert.equal(h.before,'1. Уточнить дату\n2. Подтвердить сумму');assert.equal(h.after,'Подтвердить сумму');s=saveTask(s,{...s.tasks[0],questions:''},'Игорь');assert.equal(s.tasks[0].questions,'');assert.equal(s.history.at(-1).after,'');});
+test('XLSX сохраняет вопросы с переносами строк и текстом, похожим на формулу',()=>{const s=saveTask(blankState(),{...task,questions:'=Уточнить\n<Вопрос> & ответ'},'Игорь');assert.deepEqual(JSON.parse(JSON.stringify(decodeWorkbook(encodeWorkbook(s,X),X))),s);const ws=toWorkbook(s,X).Sheets['Задачи'];const header=X.utils.sheet_to_json(ws,{header:1})[0];assert.ok(header.includes('Вопросы для уточнения'));});
+test('Старые локальные записи и XLSX версии 2 получают пустое поле без потери данных',()=>{const s=saveTask(blankState(),task,'Игорь');const old=structuredClone(s);old.schema=2;delete old.tasks[0].questions;const migrated=validateState(old);assert.equal(migrated.tasks[0].questions,'');assert.equal(migrated.tasks[0].id,s.tasks[0].id);assert.deepEqual(migrated.history,s.history);const wb=toWorkbook(s,X);wb.Sheets['Настройки'].B3.v=2;delete wb.Sheets['Задачи'].P1;delete wb.Sheets['Задачи'].P2;const loaded=decodeWorkbook(X.write(wb,{bookType:'xlsx',type:'array'}),X);assert.equal(loaded.tasks[0].questions,'');assert.equal(loaded.tasks[0].description,task.description);});

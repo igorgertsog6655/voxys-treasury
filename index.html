@@ -5,8 +5,8 @@
   <meta name="theme-color" content="#20252b">
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
-  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css">
-  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=github-sync-1"></script>
+  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=github-status-1">
+  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=github-status-1"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -20,6 +20,11 @@
       <a class="nav-item" href="#banks"><span data-icon="phone"></span> Работа с банками <b id="nav-banks-count">—</b></a>
       <a class="nav-item" href="#modules"><span data-icon="grid"></span> Другие блоки <b>0</b></a>
     </nav>
+    <div class="sidebar-sync" id="sidebar-sync" hidden>
+      <span id="sidebar-sync-status" role="status"></span>
+      <button type="button" id="sidebar-sync-refresh">Обновить с GitHub</button>
+      <button type="button" id="sidebar-sync-connect" hidden>Настроить доступ</button>
+    </div>
     <div class="sidebar-bottom"><div class="avatar">ИГ</div><div>Игорь Герцог<small>Личное рабочее пространство</small></div></div>
   </aside>
   <div class="shell">

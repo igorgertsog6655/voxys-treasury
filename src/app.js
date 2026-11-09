@@ -12,14 +12,35 @@ try{if(rawAtLoad)state=validateState(JSON.parse(rawAtLoad));}catch(e){conflict=t
 let sortMode=localStorage.getItem('voxys.taskSort')||'manual';
 let showQuestions=localStorage.getItem('voxys.showTaskQuestions')==='true';
 let view='table',handle=null,baseline=null,syncedRevision=-1,copyRevision=-1,busy=false,selectedId=null,toastTimer;
-let remoteStore=null,remoteRevision=-1,remoteError='',githubUI=null;
+let remoteStore=null,remoteRevision=-1,remoteError='',githubConnectionIssue='',githubUI=null;
 const formatDate=s=>s?new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(s+'T12:00:00Z')):'Уточнить';
 const formatTime=s=>new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Novosibirsk',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',year:'numeric'}).format(new Date(s));
 const initials=s=>s.trim().split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase();
 const statusBadge=t=>`<span class="status s${STATUSES.indexOf(t.status)}">${esc(t.status)}</span>`;
 const person=s=>`<span class="person"><span class="mini-avatar">${esc(initials(s))}</span><span>${esc(s)}</span></span>`;
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),6500);}
+function renderSidebarSync() {
+  const panel=$('#sidebar-sync');
+  if(!panel)return;
+  const refreshing=!!githubUI?.isWorking();
+  const pending=localStorage.getItem('voxys.github.dirty')==='1';
+  const warning=conflict||!!githubConnectionIssue||!!remoteError||pending;
+  let message='В этом браузере открыта локальная копия.';
+  if(conflict)message='Реестр изменён в другой вкладке. Обновите страницу.';
+  else if(refreshing)message='Загрузка с GitHub…';
+  else if(githubConnectionIssue||remoteError)message=githubConnectionIssue||remoteError;
+  else if(pending)message='Есть правки, не записанные на GitHub.';
+  else if(remoteStore)message='Рабочая книга подключена';
+  else if(handle)message='Подключён локальный XLSX.';
+  $('#sidebar-sync-status').textContent=message;
+  $('#sidebar-sync-refresh').disabled=refreshing||busy||conflict;
+  $('#sidebar-sync-connect').hidden=!githubConnectionIssue||!!remoteStore||conflict;
+  panel.dataset.warning=String(warning);
+  panel.hidden=false;
+}
 function fileStatus(error=''){
+  if(remoteStore&&error)remoteError=error;
+  renderSidebarSync();
   $('#new-bank').disabled=!canEditRecords();
   for(const el of ['#connect-file','#import-file'])$(el).disabled=!!remoteStore||busy||!!githubUI?.isWorking();
   if(remoteStore){if(error)remoteError=error;$('#file-title').textContent=remoteStore.config.repository+' / '+remoteStore.config.path;$('#file-status').textContent=remoteError||(remoteRevision===state.revision?'Сохранено на GitHub':'Есть изменения, не записанные на GitHub');$('#file-warning').textContent=conflict?'Локальная копия изменена в другой вкладке. Обновите страницу после сохранения резервной копии.':remoteError||'Рабочий XLSX хранится в закрытом репозитории GitHub. Изменения сохраняются автоматически; «Скачать XLSX» создаёт отдельную копию.';$('#file-warning').classList.toggle('error',!!remoteError||conflict);$('#new-task').disabled=conflict||busy||!!githubUI?.isWorking();return;}
@@ -83,7 +104,9 @@ const inlineQuestions=createInlineQuestions({getState:()=>state,commit,canEdit:(
 const canEditRecords=()=>!busy&&!conflict&&!githubUI?.isWorking();
 const banksUI=createBanksUI({getState:()=>state,commit,canEdit:canEditRecords,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true,toast,esc,formatDate,icon});
 const peopleUI=createPeopleUI({getState:()=>state,commit,toast,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking()});
-githubUI=createGitHubUI({getState:()=>state,encode:encodeWorkbook,decode:decodeWorkbook,replaceLocal:commitImport,setRemote:store=>{remoteStore=store;remoteRevision=store?state.revision:-1;remoteError='';handle=null;baseline=null;},canEdit:()=>!busy&&!conflict,toast,refresh:(error='')=>{render();if(error)fileStatus(error);},hasUnsynced:()=>localStorage.getItem('voxys.github.dirty')==='1'});
+githubUI=createGitHubUI({getState:()=>state,encode:encodeWorkbook,decode:decodeWorkbook,replaceLocal:commitImport,setRemote:store=>{remoteStore=store;remoteRevision=store?state.revision:-1;remoteError='';githubConnectionIssue='';handle=null;baseline=null;},canEdit:()=>!busy&&!conflict,toast,refresh:(error='')=>{if(error)githubConnectionIssue=error;render();if(error)fileStatus(error);},hasUnsynced:()=>localStorage.getItem('voxys.github.dirty')==='1'});
+$('#sidebar-sync-refresh')?.addEventListener('click',()=>githubUI.refreshFromGitHub());
+$('#sidebar-sync-connect')?.addEventListener('click',()=>githubUI.open());
 $('#show-task-questions').checked=showQuestions;
 $('#show-task-questions').onchange=e=>{showQuestions=e.target.checked;localStorage.setItem('voxys.showTaskQuestions',String(showQuestions));renderList();};
 $('#task-sort').value=sortMode;

@@ -27,3 +27,10 @@
   .section-nav .nav-item{display:flex;gap:6px;padding:6px;margin:0;font-size:11px}
   .section-nav .nav-item svg{width:14px;height:14px}
 }
+
+.sidebar-sync{margin:12px 4px 20px;padding:10px 8px;border-top:1px solid #3a3f47;color:#bfc4ce;font-size:11px;overflow-wrap:anywhere}
+.sidebar-sync[data-warning="true"]{color:#f0c44d}
+.sidebar-sync button{display:block;margin-top:5px;padding:4px 0;border:0;background:none;color:#f0c44d;font-size:11px;text-align:left}
+.sidebar-sync button:hover{text-decoration:underline}
+.sidebar-sync[hidden],.sidebar-sync button[hidden]{display:none}
+@media(max-width:760px){.sidebar-sync{flex-basis:100%;margin:0;padding:6px 0}}

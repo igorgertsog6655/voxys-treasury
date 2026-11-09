@@ -2,11 +2,37 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
-import {blankState,saveTask,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts} from '../src/model.js';
+import {blankState,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts} from '../src/model.js';
+import {transitionTask} from '../src/kanban.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Канбан назначает исполнителя, сохраняет комментарий и логирует переходы в обе стороны',()=>{
+  let state=savePerson(create(),{fullName:'Новый исполнитель',email:'executor@example.com',position:'Казначей'},'Игорь');
+  const id=state.tasks[0].id;
+  const assignment={holder:state.people[0].fullName,holderId:state.people[0].id};
+  const move=(from,status,comment)=>transitionTask(state,{id,from,status,comment,assignment,author:'Игорь'});
+  assert.throws(()=>move('Бэклог','В работе','   '),/комментарий/);
+  state=move('Бэклог','В работе','Передано в казначейство');
+  assert.equal(state.tasks[0].holderId,assignment.holderId);
+  assert.equal(state.tasks[0].owner,input.owner);
+  state=move('В работе','Завершена','Работа выполнена');
+  assert.ok(state.tasks[0].completedAt);
+  assert.throws(()=>move('В работе','Бэклог','Устаревшая карточка'),/уже изменился/);
+  state=move('Завершена','В работе','Открыта повторно');
+  assert.equal(state.tasks[0].completedAt,'');
+  state=move('В работе','Бэклог','Возвращена на планирование');
+  const restored=decodeWorkbook(encodeWorkbook(state,X),X);
+  const statuses=restored.history.filter(entry=>entry.field==='Статус');
+  assert.deepEqual(statuses.map(({before,after})=>[before,after]),[
+    ['Бэклог','В работе'],['В работе','Завершена'],['Завершена','В работе'],['В работе','Бэклог']
+  ]);
+  assert.ok(restored.history.some(entry=>entry.field==='У кого сейчас'&&entry.after===assignment.holder));
+  assert.equal(restored.comments.at(-1).text,'Возвращена на планирование');
+  assert.equal(restored.comments.at(-1).at,statuses.at(-1).at);
+  assert.deepEqual(restored,state);
+});
 test('Банки и вся история контактов сохраняются вместе с задачами в XLSX',()=>{
   let state=saveBank(create(),{name:'Банк А'});
   const bankId=state.banks[0].id;

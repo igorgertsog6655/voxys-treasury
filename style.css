@@ -34,3 +34,17 @@
 .sidebar-sync button:hover{text-decoration:underline}
 .sidebar-sync[hidden],.sidebar-sync button[hidden]{display:none}
 @media(max-width:760px){.sidebar-sync{flex-basis:100%;margin:0;padding:6px 0}}
+
+.board-help{margin:0;padding:11px 20px 0;background:#fcfcfd;color:#626b79;font-size:12px}
+.board-card[draggable="true"]{cursor:grab}
+.board-card.board-dragging{opacity:.5}
+.board-column.board-drop-target{background:#fff6d8;outline:2px solid #e6b53d;outline-offset:-2px}
+.board-card-open{display:block;width:100%;padding:0;border:0;background:transparent;text-align:left;white-space:normal;font:inherit;color:inherit}
+.board-card-open:hover{background:transparent}
+.board-card .board-move{display:block;margin-top:9px;padding:4px 0;color:#745715;font-size:11px}
+.kanban-move-task{font-weight:600;overflow-wrap:anywhere}
+#kanban-move-from{margin:4px 0 16px}
+
+.board-card-heading{display:flex;align-items:center;justify-content:space-between}
+.board-grip{color:#7a8492;font-size:16px;line-height:1}
+.board-card-stage{display:block;font-size:11px;overflow-wrap:anywhere}

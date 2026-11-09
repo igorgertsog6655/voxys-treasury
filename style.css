@@ -4,3 +4,18 @@
  .registry-question-toggle{display:flex;align-items:center;gap:8px;font-size:11px;color:#77818e;margin-left:auto;margin-right:20px;cursor:pointer}.registry-question-toggle input{width:auto;accent-color:#c59b30}.registry-question-toggle[hidden]{display:none}.task-table.has-questions{min-width:1150px}.task-table.has-questions th:first-child{width:26%}.task-table.has-questions th:nth-child(2){width:25%}.task-table.has-questions th:nth-child(3){width:10%}.task-table.has-questions th:nth-child(4){width:12%}.task-table.has-questions th:nth-child(5){width:10%}.task-table.has-questions th:nth-child(6){width:14%}.task-table.has-questions th:last-child{width:3%}.task-questions{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}.task-questions .muted{margin-top:0}@media(max-width:900px){.registry-top{flex-wrap:wrap;column-gap:12px}.registry-question-toggle{order:3;flex-basis:100%;margin:0;padding:10px 0}.registry-top .record-count{margin-left:auto}}
  .question-cell-text{white-space:pre-wrap;overflow-wrap:anywhere}.question-edit{margin-top:10px;padding:5px 8px;font-size:11px;font-weight:500;color:#8c6f29;border-color:#e9e1cf;background:#fffcf4}.inline-questions{white-space:normal}.inline-questions textarea{min-height:110px;line-height:1.6;font-size:12px;white-space:pre-wrap}.question-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.question-actions button{font-size:11px;padding:7px 10px}.inline-questions .muted{margin-top:7px;font-size:9px}.inline-questions .form-error{margin-top:8px}
  .task-name-wrap{display:flex;gap:9px;align-items:flex-start}.task-name-wrap>div{min-width:0}.task-drag-handle{flex:none;cursor:grab;user-select:none;color:#a4acb6;font-size:18px;letter-spacing:-4px;padding:12px 6px 12px 0;line-height:1}.task-drag-handle[draggable="false"]{cursor:default;opacity:.35}.task-drag-handle:focus-visible{outline:2px solid #cda744;outline-offset:2px}.task-dragging{opacity:.4}.task-table tr.drop-before td{box-shadow:inset 0 3px #dcad37}.task-table tr.drop-after td{box-shadow:inset 0 -3px #dcad37}#task-sort{width:140px}
+
+.bank-heading,.bank-history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bank-table{min-width:900px;table-layout:fixed}
+.bank-table th:first-child{width:15%}
+.bank-table th:nth-child(2){width:13%}
+.bank-table th:nth-child(3),.bank-table th:nth-child(4){width:14%}
+.bank-table td{vertical-align:top;overflow-wrap:anywhere}
+.bank-name{border:0;background:none;padding:0;text-align:left;font:inherit;font-weight:600;color:#23614e;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+.bank-name:hover{text-decoration:underline}
+.bank-summary{white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.bank-actions{display:flex;gap:8px;flex-wrap:wrap}
+.bank-history-heading{margin-bottom:16px}
+.bank-history-heading h3{margin:0}
+.bank-contact dd{white-space:pre-wrap;overflow-wrap:anywhere}
+.bank-contact .detail-grid{margin-bottom:0}

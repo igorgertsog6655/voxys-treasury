@@ -1,3 +1,4 @@
+import {hasRecords} from './model.js';
 import {GitHubStore} from './github-store.js';
 import {rememberConnection,restoreConnection,forgetConnection} from './github-credentials.js';
 const $=s=>document.querySelector(s);
@@ -7,7 +8,7 @@ export function createGitHubUI({getState,encode,decode,replaceLocal,setRemote,ca
   async function connect(config,token,{automatic=false,remember=false}={}){
     if(working||!canEdit())throw Error('Дождитесь завершения текущего сохранения.');working=true;
     try{refresh();const candidate=services.createStore(config,token),bytes=await candidate.load();
-      if(bytes){const loaded=decode(bytes);if((getState().tasks.length||getState().people.length)&&JSON.stringify(loaded)!==JSON.stringify(getState())){if(automatic&&hasUnsynced()){throw Error('Есть локальные изменения, не записанные на GitHub. Скачайте резервную копию и нажмите «Обновить с GitHub».');}if(!automatic&&!confirm('Загрузить рабочий XLSX с GitHub? Текущий локальный реестр будет заменён. При необходимости сначала скачайте резервную копию.'))return false;}await replaceLocal(loaded);}
+      if(bytes){const loaded=decode(bytes);if(hasRecords(getState())&&JSON.stringify(loaded)!==JSON.stringify(getState())){if(automatic&&hasUnsynced()){throw Error('Есть локальные изменения, не записанные на GitHub. Скачайте резервную копию и нажмите «Обновить с GitHub».');}if(!automatic&&!confirm('Загрузить рабочий XLSX с GitHub? Текущий локальный реестр будет заменён. При необходимости сначала скачайте резервную копию.'))return false;}await replaceLocal(loaded);}
       else{if(automatic)throw Error('Рабочий XLSX отсутствует. Подключитесь вручную, чтобы создать его.');if(!confirm(`Файл на GitHub не найден. Создать его из текущего реестра (${getState().tasks.length} задач)?`))return false;await candidate.save(encode(getState()));}
       if(remember)await services.remember(candidate.config,token);else if(!automatic)await services.forget();
       active=candidate;setRemote(candidate);localStorage.removeItem('voxys.github.dirty');localStorage.setItem('voxys.github.config',JSON.stringify(candidate.config));refresh();toast('Подключено к GitHub. XLSX загружен, автосохранение включено.');return true;

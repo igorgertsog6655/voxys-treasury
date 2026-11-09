@@ -18,6 +18,39 @@ export function createGitHubUI({getState,encode,decode,replaceLocal,setRemote,ca
   $('#github-connect').onclick=open;
   $('#github-form').onsubmit=async e=>{e.preventDefault();const f=e.target,button=f.querySelector('[type="submit"]');button.disabled=true;try{if(await connect({repository:f.elements.repository.value,path:f.elements.path.value},f.elements.token.value,{remember:f.elements.remember.checked})){$('#github-dialog').close();f.elements.token.value='';}}catch(err){$('#github-error').textContent=err.message;}finally{button.disabled=false;}};
   $('#github-disconnect').onclick=async()=>{if(!canEdit()||working)return;try{await services.forget();active=null;setRemote(null);$('#github-form').elements.token.value='';$('#github-dialog').close();refresh();toast('Подключение забыто. Локальный реестр сохранён.');}catch(err){$('#github-error').textContent=err.message;}};
-  $('#github-refresh').onclick=async()=>{if(!active)return open();try{if(hasUnsynced()&&!confirm('На GitHub могут быть другие изменения. Загрузить их и заменить локальный реестр? Сначала скачайте копию, если локальные изменения нужны.'))return;if(working||!canEdit())return;working=true;const bytes=await active.load();if(!bytes)throw Error('Рабочий файл удалён на GitHub. Автозапись остановлена.');await replaceLocal(decode(bytes));setRemote(active);localStorage.removeItem('voxys.github.dirty');refresh();toast('Загружена свежая версия XLSX с GitHub');}catch(err){active=null;setRemote(null);refresh('GitHub не подключён: '+err.message);toast(err.message);}finally{working=false;refresh();}};
-  return {open,isWorking:()=>working,async restore(){try{const saved=await services.restore();if(saved)await connect(saved.config,saved.token,{automatic:true});}catch(err){toast('Подключение GitHub: '+err.message);refresh('GitHub не подключён: '+err.message);}}};
+  async function refreshFromGitHub({automatic=false}={}) {
+    if(working||!canEdit()||(automatic&&hasUnsynced()))return;
+    working=true;
+    let failure='';
+    try{
+      let candidate=active;
+      if(!candidate){
+        const saved=await services.restore();
+        if(!saved){
+          if(!automatic)open();
+          return;
+        }
+        candidate=services.createStore(saved.config,saved.token);
+      }
+      if(hasUnsynced()&&(automatic||!confirm('Загрузить актуальный XLSX с GitHub и заменить локальные изменения? Если они нужны, сначала скачайте копию.')))return;
+      refresh();
+      const bytes=await candidate.load();
+      if(!bytes)throw Error('Рабочий XLSX не найден на GitHub. Проверьте подключение.');
+      const loaded=decode(bytes);
+      if(JSON.stringify(loaded)!==JSON.stringify(getState()))await replaceLocal(loaded);
+      active=candidate;
+      setRemote(candidate);
+      localStorage.removeItem('voxys.github.dirty');
+      if(!automatic)toast('Загружена свежая версия XLSX с GitHub');
+    }catch(err){
+      setRemote(null);
+      failure='GitHub не подключён: '+err.message;
+      toast(failure);
+    }finally{
+      working=false;
+      refresh(failure);
+    }
+  }
+  $('#github-refresh').onclick=()=>refreshFromGitHub();
+  return {open,refreshFromGitHub,isWorking:()=>working,async restore(){try{const saved=await services.restore();if(saved)await connect(saved.config,saved.token,{automatic:true});}catch(err){toast('Подключение GitHub: '+err.message);refresh('GitHub не подключён: '+err.message);}}};
 }

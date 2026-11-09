@@ -2,7 +2,7 @@ import {createBanksUI} from './banks.js';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js';
 import {createPeopleUI} from './people.js';
-import {createGitHubUI} from './github-ui.js';
+import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
 import {encodeWorkbook,decodeWorkbook} from './workbook.js';
 import {icon,hydrateIcons} from './icons.js';
@@ -47,9 +47,15 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
   $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showQuestions?'has-questions':''}"><thead><tr><th>Задача</th>${showQuestions?'<th>Вопросы для уточнения</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showQuestions?inlineQuestions.cell(t):''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderNavigationCounts() {
-  $('#nav-count').textContent=state.tasks.length;
-  $('#nav-people-count').textContent=state.people.length;
-  $('#nav-banks-count').textContent=state.banks.length;
+  const counts={
+    '#nav-count':state.tasks.length,
+    '#nav-people-count':state.people.length,
+    '#nav-banks-count':state.banks.length
+  };
+  for(const [selector,count] of Object.entries(counts)){
+    const badge=$(selector);
+    if(badge)badge.textContent=count;
+  }
 }
 function render(){renderNavigationCounts();peopleUI.render();banksUI.render();const selected=$('#filter-owner').value;const owners=[...new Set(state.tasks.map(t=>t.owner))].sort((a,b)=>a.localeCompare(b,'ru'));$('#filter-owner').innerHTML='<option value="">Все ответственные</option>'+owners.map(o=>`<option ${o===selected?'selected':''}>${esc(o)}</option>`).join('');$('#people').innerHTML=[...new Set(state.tasks.flatMap(t=>[t.owner,t.holder]))].map(o=>`<option value="${esc(o)}">`).join('');renderStats();renderList();fileStatus();}
 function resetFilters(){$('#search').value='';$('#filter-status').value='';$('#filter-owner').value='';$('#filter-due').value='';renderStats();renderList();}
@@ -84,4 +90,14 @@ $('#task-sort').value=sortMode;
 $('#task-sort').onchange=e=>{sortMode=e.target.value;localStorage.setItem('voxys.taskSort',sortMode);renderList();};
 createTaskOrdering({getState:()=>state,commit,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking(),isManual:()=>sortMode==='manual',toast,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true});
 hydrateIcons();render();
-githubUI.restore();
+githubUI.restore().then(()=>{
+  let lastRefresh=Date.now();
+  const refreshOnReturn=()=>{
+    if(document.hidden||handle||!canEditRecords()||document.querySelector('dialog[open]')||inlineQuestions.hasUnsaved())return;
+    if(Date.now()-lastRefresh<5000)return;
+    lastRefresh=Date.now();
+    void githubUI.refreshFromGitHub({automatic:true});
+  };
+  document.addEventListener('visibilitychange',refreshOnReturn);
+  window.addEventListener('focus',refreshOnReturn);
+});

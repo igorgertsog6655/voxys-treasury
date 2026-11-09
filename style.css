@@ -68,8 +68,16 @@
 
 .matrix-heading-actions{display:flex;gap:8px;flex-wrap:wrap}
 .matrix-sort-hint{margin:0;border-bottom:1px solid #eceef1}
-.matrix-table .matrix-section-row>th,.matrix-table .matrix-section-row>td{background:#f1f3f7;color:#48566a}
-.matrix-table .matrix-section-row small{color:#6a7688;margin-left:6px}
+.matrix-table tr.matrix-section-row>th:first-child,.matrix-table tr.matrix-section-row>td{
+  background:#e7edf5;
+  border-top:1px solid #d6dfe9;
+  border-bottom:1px solid #d6dfe9;
+  padding-block:14px;
+  color:#48566a;
+}
+.matrix-table tr.matrix-section-row>th:first-child{border-right-color:#e7edf5}
+.matrix-section-row .matrix-function{font-size:16px;font-weight:700;line-height:1.35;color:#263648}
+.matrix-table .matrix-section-row small{color:#5a6a7d;margin-left:6px;font-size:12px;font-weight:500}
 .matrix-table .matrix-section-row button{font-size:11px;padding:3px 0;color:#9d3b34}
 .matrix-table [data-matrix-row] .matrix-function>span:nth-child(2){flex:1;min-width:100px;overflow-wrap:anywhere}
 .matrix-grip{flex:0 0 auto;cursor:grab;color:#677488;letter-spacing:-2px;padding:3px 4px;user-select:none}

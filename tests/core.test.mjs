@@ -4,10 +4,49 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import {blankState,hasRecords,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts,saveTreasuryFunction,deleteTreasuryFunction,setFunctionAssignment} from '../src/model.js';
 import {transitionTask} from '../src/kanban.js';
+import {addFunctionSection,deleteFunctionSection,moveTreasuryFunction} from '../src/model.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Порядок и раздел функций сохраняются вместе с отметками, непустой раздел нельзя удалить',()=>{
+  let state=savePerson(create(),{fullName:'Казначей',email:'groups@example.com',position:'Казначейство'},'Игорь');
+  const personId=state.people[0].id;
+  state=setFunctionAssignment(state,'cash-position',personId,true);
+  assert.throws(()=>deleteFunctionSection(state,'liquidity'),/пустой раздел/);
+  state=moveTreasuryFunction(state,'cash-position','liquidity','cash-forecast',true);
+  const inLiquidity=s=>s.treasuryFunctions.filter(row=>row.sectionId==='liquidity').map(row=>row.id);
+  assert.deepEqual(inLiquidity(state).slice(0,2),['cash-forecast','cash-position']);
+  state=moveTreasuryFunction(state,'cash-position','liquidity','cash-forecast');
+  assert.deepEqual(inLiquidity(state).slice(0,2),['cash-position','cash-forecast']);
+  state=addFunctionSection(state,'Новый раздел');
+  const sectionId=state.functionSections.at(-1).id;
+  state=moveTreasuryFunction(state,'cash-position',sectionId);
+  assert.equal(state.treasuryFunctions.find(row=>row.id==='cash-position').sectionId,sectionId);
+  assert.deepEqual(decodeWorkbook(encodeWorkbook(state,X),X),state);
+  state=moveTreasuryFunction(state,'cash-position','liquidity');
+  state=deleteFunctionSection(state,sectionId);
+  assert.ok(!state.functionSections.some(section=>section.id===sectionId));
+  assert.deepEqual(state.functionAssignments,[{functionId:'cash-position',personId}]);
+});
+test('Миграция XLSX версии 6 распределяет прежние функции без потери пользовательских записей',()=>{
+  let state=savePerson(create(),{fullName:'Казначей',email:'migration@example.com',position:'Казначейство'},'Игорь');
+  state=saveTreasuryFunction(state,{name:'Пользовательская функция'});
+  const custom=state.treasuryFunctions.at(-1);
+  state=setFunctionAssignment(state,custom.id,state.people[0].id,true);
+  const wb=toWorkbook(state,X);
+  wb.Sheets['Настройки'].B3.v=6;
+  delete wb.Sheets['Разделы функций'];
+  wb.SheetNames=wb.SheetNames.filter(name=>name!=='Разделы функций');
+  wb.Sheets['Функции казначейства']=X.utils.aoa_to_sheet([
+    ['ID функции','Функция казначейства'],...state.treasuryFunctions.map(({id,name})=>[id,name])
+  ]);
+  const restored=decodeWorkbook(X.write(wb,{type:'array',bookType:'xlsx'}),X);
+  assert.ok(restored.functionSections.some(section=>section.id==='other'));
+  assert.deepEqual(restored.treasuryFunctions.at(-1),{...custom,sectionId:'other'});
+  assert.deepEqual(restored.functionAssignments,state.functionAssignments);
+  assert.deepEqual(restored.tasks,state.tasks);
+});
 test('Матрица сохраняет галочки по ID при переименовании, а удаление функции снимает её назначения',()=>{
   let state=savePerson(create(),{fullName:'Казначей',email:'matrix@example.com',position:'Казначейство'},'Игорь');
   state=saveTreasuryFunction(state,{name:'Согласование лимитов'});

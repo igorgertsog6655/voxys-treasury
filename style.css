@@ -65,3 +65,16 @@
 .matrix-actions [data-function-delete]{color:#9d3b34}
 .matrix-table input[type="checkbox"]{width:18px;height:18px;accent-color:#9a6d04;cursor:pointer}
 @media(max-width:760px){.matrix-table tr>th:first-child{min-width:170px}}
+
+.matrix-heading-actions{display:flex;gap:8px;flex-wrap:wrap}
+.matrix-sort-hint{margin:0;border-bottom:1px solid #eceef1}
+.matrix-table .matrix-section-row>th,.matrix-table .matrix-section-row>td{background:#f1f3f7;color:#48566a}
+.matrix-table .matrix-section-row small{color:#6a7688;margin-left:6px}
+.matrix-table .matrix-section-row button{font-size:11px;padding:3px 0;color:#9d3b34}
+.matrix-table [data-matrix-row] .matrix-function>span:nth-child(2){flex:1;min-width:100px;overflow-wrap:anywhere}
+.matrix-grip{flex:0 0 auto;cursor:grab;color:#677488;letter-spacing:-2px;padding:3px 4px;user-select:none}
+.matrix-grip:focus-visible{outline:2px solid #9a6d04;outline-offset:1px}
+.matrix-table .matrix-dragging{opacity:.45}
+.matrix-table .matrix-drop-before>*{box-shadow:inset 0 3px #d5a52f}
+.matrix-table .matrix-drop-after>*{box-shadow:inset 0 -3px #d5a52f}
+#matrix-section-field[hidden]{display:none}

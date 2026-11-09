@@ -9,6 +9,8 @@ const orderFields={sortOrder:'Порядок приоритета'};
 const bankFields={id:'ID банка',name:'Банк'};
 const bankContactFields={id:'ID контакта',bankId:'ID банка',date:'Дата контакта',contactedBy:'Кто контактировал',counterparty:'С кем контактировали',outcome:'Статус / договорённости',nextSteps:'Дальнейшие шаги',createdAt:'Добавлено в'};
 const treasuryFunctionFields={id:'ID функции',name:'Функция казначейства'};
+const sectionFields={id:'ID раздела',name:'Раздел'};
+const functionSectionFields={sectionId:'ID раздела'};
 const functionAssignmentFields={functionId:'ID функции',personId:'ID исполнителя'};
 function sheet(rows,fields,X) {
   const ws=X.utils.aoa_to_sheet([Object.values(fields),...rows.map(r=>Object.keys(fields).map(k=>r[k]??''))]);
@@ -32,11 +34,12 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   const contactsSheet=sheet(contacts,bankContactFields,X);
   for(let i=0;i<contacts.length;i++)contactsSheet[`C${i+2}`].z='dd.mm.yyyy';
   X.utils.book_append_sheet(wb,contactsSheet,'Контакты с банками');
-  const functions=sheet(state.treasuryFunctions,treasuryFunctionFields,X);
+  const functions=sheet(state.treasuryFunctions,{...treasuryFunctionFields,...functionSectionFields},X);
   functions['!cols'][1].wch=74;
   X.utils.book_append_sheet(wb,functions,'Функции казначейства');
+  X.utils.book_append_sheet(wb,sheet(state.functionSections,sectionFields,X),'Разделы функций');
   X.utils.book_append_sheet(wb,sheet(state.functionAssignments,functionAssignmentFields,X),'Назначения по функциям');
-  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',6],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']]),'Настройки');
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',7],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']]),'Настройки');
   return wb;
 }
 export const encodeWorkbook=(state,X=globalThis.XLSX)=>X.write(toWorkbook(state,X),{bookType:'xlsx',type:'array',compression:true,cellDates:false});
@@ -61,7 +64,7 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   // Formulas are not evaluated by this application. Refuse them rather than trust cached results.
   for(const ws of Object.values(wb.Sheets))for(const [key,cell]of Object.entries(ws))if(!key.startsWith('!')&&cell.f)throw Error('В файле есть формулы. Замените их значениями перед импортом.');
   const meta=readRows(wb,'Настройки',{key:'Параметр',value:'Значение'},X);const get=k=>meta.find(r=>r.key===k)?.value;
-  const version=Number(get('Версия'));if(get('Формат')!=='VOXYS Treasury'||![1,2,3,4,5,6].includes(version))throw Error('Откройте XLSX, созданный этим приложением (версии 1–6).');
+  const version=Number(get('Версия'));if(get('Формат')!=='VOXYS Treasury'||![1,2,3,4,5,6,7].includes(version))throw Error('Откройте XLSX, созданный этим приложением (версии 1–7).');
   const s=blankState();s.revision=Number(get('Ревизия'));
   s.tasks=readRows(wb,'Задачи',taskFields,X).map(t=>{const due=readDate(t.due,X);for(const k of Object.keys(t))t[k]=String(t[k]);return {...t,due,links:[]};});
   s.history=readRows(wb,'История',histFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));
@@ -78,10 +81,14 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
     }));
   }
   if(version>=6){
-    s.treasuryFunctions=readRows(wb,'Функции казначейства',treasuryFunctionFields,X)
-      .map(row=>({id:String(row.id),name:String(row.name)}));
+    const fields=version===6?treasuryFunctionFields:{...treasuryFunctionFields,...functionSectionFields};
+    s.treasuryFunctions=readRows(wb,'Функции казначейства',fields,X)
+      .map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,String(value)])));
     s.functionAssignments=readRows(wb,'Назначения по функциям',functionAssignmentFields,X)
       .map(row=>({functionId:String(row.functionId),personId:String(row.personId)}));
+    if(version===6)s.schema=6;
+    else s.functionSections=readRows(wb,'Разделы функций',sectionFields,X)
+      .map(row=>({id:String(row.id),name:String(row.name)}));
   }
   const ids=new Map(s.tasks.map(t=>[t.id,t]));for(const l of readRows(wb,'Результаты',{taskId:'ID задачи',url:'Ссылка'},X)){const t=ids.get(String(l.taskId));if(!t)throw Error('Ссылка относится к неизвестной задаче.');t.links.push(String(l.url));}
   return validateState(s);

@@ -22,14 +22,29 @@ const starterFunctions = [
   ['systems','Казначейские системы и автоматизация']
 ];
 const makeStarterFunctions = () => starterFunctions.map(([id,name])=>({id,name}));
-export const blankState = () => ({
-  schema:6,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[],
+const starterSections = [
+  ['liquidity','Денежные потоки и ликвидность',['cash-position','cash-forecast','liquidity','intercompany','investments']],
+  ['operations','Платежи и банковские операции',['payments','receipts','banks','bank-accounts']],
+  ['funding','Финансирование и обслуживание долга',['bank-funding','bonds','debt','covenants','security']],
+  ['risks','Финансовые риски',['financial-risk']],
+  ['governance','Отчётность, контроль и системы',['reporting','controls','systems']]
+];
+function groupMatrixFunctions(state) {
+  state.functionSections=starterSections.map(([id,name])=>({id,name}));
+  const sectionsByFunction=new Map(starterSections.flatMap(([id,,functions])=>functions.map(key=>[key,id])));
+  state.treasuryFunctions=state.treasuryFunctions.map(row=>({...row,sectionId:sectionsByFunction.get(row.id)||'other'}));
+  if(state.treasuryFunctions.some(row=>row.sectionId==='other'))state.functionSections.push({id:'other',name:'Прочие функции'});
+  return state;
+}
+export const blankState = () => groupMatrixFunctions({
+  schema:7,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[],
   treasuryFunctions:makeStarterFunctions(),functionAssignments:[]
 });
 export function hasRecords(state) {
-  const functions=state.treasuryFunctions;
-  const matrixEdited=functions&&(functions.length!==starterFunctions.length||
-    functions.some(({id,name},i)=>id!==starterFunctions[i][0]||name!==starterFunctions[i][1]));
+  const {treasuryFunctions,functionSections}=state;
+  const defaults=blankState();
+  const matrixEdited=(treasuryFunctions&&JSON.stringify(treasuryFunctions)!==JSON.stringify(defaults.treasuryFunctions))||
+    (functionSections&&JSON.stringify(functionSections)!==JSON.stringify(defaults.functionSections));
   return Boolean(state.tasks.length||state.people.length||state.banks?.length||state.functionAssignments?.length||matrixEdited);
 }
 export function migrateState(s) {
@@ -43,7 +58,11 @@ export function migrateState(s) {
     next.treasuryFunctions=makeStarterFunctions();
     next.functionAssignments=[];
   }
-  if(next.schema===6&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{
+  if(next.schema===6&&Array.isArray(next.treasuryFunctions)){
+    next.schema=7;
+    groupMatrixFunctions(next);
+  }
+  if(next.schema===7&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{
     t.ownerId??='';t.holderId??='';t.questions??='';t.sortOrder??=i;
   });
   return next;
@@ -80,8 +99,8 @@ export function saveTask(state, input, author, comment='') {
 export function addComment(state,taskId,author,text) {if(!state.tasks.some(t=>t.id===taskId)) throw Error('Задача не найдена.');if(!author.trim()||!text.trim()) throw Error('Заполните автора и комментарий.');if(author.length>120||text.length>15000) throw Error('Слишком длинное имя или комментарий.');const next=structuredClone(state);next.comments.push({id:uid(),taskId,at:new Date().toISOString(),author:author.trim(),text:text.trim()});next.revision++;return next;}
 export function validateState(s) {
   s=migrateState(s);
-  if(s?.schema!==6||!Number.isSafeInteger(s.revision)||s.revision<0||
-    !['tasks','history','comments','people','banks','bankContacts','treasuryFunctions','functionAssignments'].every(key=>Array.isArray(s[key])))throw Error('Формат данных не поддерживается.');
+  if(s?.schema!==7||!Number.isSafeInteger(s.revision)||s.revision<0||
+    !['tasks','history','comments','people','banks','bankContacts','treasuryFunctions','functionAssignments','functionSections'].every(key=>Array.isArray(s[key])))throw Error('Формат данных не поддерживается.');
   const personIds=new Set(),emails=new Set();for(const p of s.people){validatePerson(p);if(!p.id||personIds.has(p.id)||emails.has(p.email.toLowerCase()))throw Error('Повторяющийся ID или электронный адрес исполнителя.');personIds.add(p.id);emails.add(p.email.toLowerCase());}
   for(const t of s.tasks)for(const k of ['ownerId','holderId'])if(t[k]&&!personIds.has(t[k]))throw Error('В задаче указан неизвестный исполнитель.');
   const ids=new Set(),orders=new Set(); for(const t of s.tasks){validateTask(t);if(orders.has(t.sortOrder))throw Error('Повторяющийся порядок задач.');orders.add(t.sortOrder);if(!t.id||ids.has(t.id))throw Error('Пустой или повторяющийся ID задачи.');ids.add(t.id);for(const k of ['createdAt','updatedAt'])if(!t[k]||!Number.isFinite(Date.parse(t[k])))throw Error('Некорректная дата записи.');}
@@ -105,9 +124,18 @@ export function validateState(s) {
   return s;
 }
 function validateFunctionMatrix(state,personIds) {
+  const sectionIds=new Set(),sectionNames=new Set();
+  for(const section of state.functionSections){
+    if(typeof section.name!=='string'||!section.name.trim()||section.name.length>120)throw Error('Укажите название раздела (до 120 символов).');
+    const name=normalizeFunctionName(section.name);
+    if(typeof section.id!=='string'||!section.id||sectionIds.has(section.id)||sectionNames.has(name))throw Error('Повторяется название или ID раздела.');
+    sectionIds.add(section.id);
+    sectionNames.add(name);
+  }
   const functions=new Map(),names=new Set();
   for(const row of state.treasuryFunctions){
     validateFunctionName(row.name);
+    if(!sectionIds.has(row.sectionId))throw Error('В функции указан неизвестный раздел.');
     const name=normalizeFunctionName(row.name);
     if(typeof row.id!=='string'||!row.id||functions.has(row.id)||names.has(name))throw Error('Повторяется название или ID функции.');
     functions.set(row.id,new Set());
@@ -124,18 +152,63 @@ const normalizeFunctionName = name => name.trim().toLocaleLowerCase('ru');
 function validateFunctionName(name) {
   if(typeof name!=='string'||!name.trim()||name.length>200)throw Error('Укажите название функции (до 200 символов).');
 }
-export function saveTreasuryFunction(state,{id,name}) {
+export function saveTreasuryFunction(state,{id,name,sectionId}) {
   const next=validateState(state);
   name=name.trim();
   validateFunctionName(name);
   if(next.treasuryFunctions.some(row=>row.id!==id&&normalizeFunctionName(row.name)===normalizeFunctionName(name)))throw Error('Функция с таким названием уже есть.');
-  if(id){
-    const row=next.treasuryFunctions.find(row=>row.id===id);
-    if(!row)throw Error('Функция не найдена.');
-    if(row.name===name)return state;
+  const row=id?next.treasuryFunctions.find(row=>row.id===id):null;
+  if(id&&!row)throw Error('Функция не найдена.');
+  sectionId??=row?.sectionId||next.functionSections[0]?.id;
+  if(!next.functionSections.some(section=>section.id===sectionId))throw Error('Выберите раздел функции.');
+  if(row){
+    if(row.name===name&&row.sectionId===sectionId)return state;
     row.name=name;
+    if(row.sectionId!==sectionId){
+      row.sectionId=sectionId;
+      next.treasuryFunctions=next.treasuryFunctions.filter(item=>item.id!==id);
+      next.treasuryFunctions.push(row);
+    }
   }else{
-    next.treasuryFunctions.push({id:uid(),name});
+    next.treasuryFunctions.push({id:uid(),name,sectionId});
+  }
+  next.revision++;
+  return next;
+}
+export function addFunctionSection(state,name) {
+  const next=validateState(state);
+  name=name.trim();
+  if(!name||name.length>120)throw Error('Укажите название раздела (до 120 символов).');
+  if(next.functionSections.some(section=>normalizeFunctionName(section.name)===normalizeFunctionName(name)))throw Error('Раздел с таким названием уже есть.');
+  next.functionSections.push({id:uid(),name});
+  next.revision++;
+  return next;
+}
+export function deleteFunctionSection(state,id) {
+  const next=validateState(state);
+  if(!next.functionSections.some(section=>section.id===id))throw Error('Раздел не найден.');
+  if(next.treasuryFunctions.some(row=>row.sectionId===id))throw Error('Удалить можно только пустой раздел.');
+  next.functionSections=next.functionSections.filter(section=>section.id!==id);
+  next.revision++;
+  return next;
+}
+export function moveTreasuryFunction(state,id,sectionId,targetId='',after=false) {
+  const next=validateState(state);
+  const rows=next.treasuryFunctions;
+  const source=rows.findIndex(row=>row.id===id);
+  if(source<0||!next.functionSections.some(section=>section.id===sectionId))throw Error('Функция или раздел не найдены.');
+  if(targetId&&!rows.some(row=>row.id===targetId&&row.sectionId===sectionId))throw Error('Строка для переноса не найдена.');
+  if(id===targetId)return state;
+  const [row]=rows.splice(source,1);
+  const changedSection=row.sectionId!==sectionId;
+  row.sectionId=sectionId;
+  const last=rows.findLastIndex(item=>item.sectionId===sectionId);
+  const destination=targetId?rows.findIndex(item=>item.id===targetId)+Number(after):(last<0?rows.length:last+1);
+  rows.splice(destination,0,row);
+  if(!changedSection){
+    const previous=state.treasuryFunctions.filter(item=>item.sectionId===sectionId);
+    const current=rows.filter(item=>item.sectionId===sectionId);
+    if(current.every((item,i)=>item.id===previous[i]?.id))return state;
   }
   next.revision++;
   return next;

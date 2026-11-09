@@ -123,6 +123,26 @@ createKanbanMoves({
   isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true
 });
 createTaskOrdering({getState:()=>state,commit,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking(),isManual:()=>sortMode==='manual',toast,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true});
+function showWorkspaceSection() {
+  const links=[...document.querySelectorAll('.section-nav [data-section-label]')];
+  const current=links.find(link=>link.hash===location.hash)||links[0];
+  if(!current)return;
+
+  for(const link of links){
+    const selected=link===current;
+    const panel=document.getElementById(link.hash.slice(1));
+    if(panel)panel.hidden=!selected;
+    link.classList.toggle('active',selected);
+    if(selected)link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  }
+  $('#section-breadcrumb').textContent=current.dataset.sectionLabel;
+}
+showWorkspaceSection();
+window.addEventListener('hashchange',()=>{
+  showWorkspaceSection();
+  window.scrollTo(0,0);
+});
 hydrateIcons();render();
 githubUI.restore().then(()=>{
   let lastRefresh=Date.now();

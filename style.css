@@ -86,3 +86,7 @@
 .matrix-table .matrix-drop-before>*{box-shadow:inset 0 3px #d5a52f}
 .matrix-table .matrix-drop-after>*{box-shadow:inset 0 -3px #d5a52f}
 #matrix-section-field[hidden]{display:none}
+
+[data-workspace-section]{scroll-margin-top:300px}
+[data-workspace-section][hidden]{display:none}
+.modules[data-workspace-section]{margin-top:0}

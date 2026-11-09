@@ -5,9 +5,9 @@
   <meta name="theme-color" content="#20252b">
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
-  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=matrix-3">
+  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=sections-1">
   <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=matrix-2"}}</script>
-  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=matrix-2"></script>
+  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=sections-1"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -16,11 +16,11 @@
     <div class="workspace-name"><span class="workspace-icon">К</span><div>Казначейство<small>Директор Казначейства</small></div></div>
     <div class="nav-label">УПРАВЛЕНИЕ</div>
     <nav class="section-nav" aria-label="Разделы казначейства">
-      <a class="nav-item active" href="#tasks"><span data-icon="tasks"></span> Реестр задач <b id="nav-count">—</b></a>
-      <a class="nav-item" href="#executors"><span data-icon="tasks"></span> Исполнители <b id="nav-people-count">—</b></a>
-      <a class="nav-item" href="#function-matrix"><span data-icon="grid"></span> Матрица функций <b id="nav-functions-count">—</b></a>
-      <a class="nav-item" href="#banks"><span data-icon="phone"></span> Работа с банками <b id="nav-banks-count">—</b></a>
-      <a class="nav-item" href="#modules"><span data-icon="grid"></span> Другие блоки <b>0</b></a>
+      <a class="nav-item active" href="#tasks" data-section-label="Реестр задач" aria-current="page"><span data-icon="tasks"></span> Реестр задач <b id="nav-count">—</b></a>
+      <a class="nav-item" href="#executors" data-section-label="Исполнители"><span data-icon="tasks"></span> Исполнители <b id="nav-people-count">—</b></a>
+      <a class="nav-item" href="#function-matrix" data-section-label="Матрица функций"><span data-icon="grid"></span> Матрица функций <b id="nav-functions-count">—</b></a>
+      <a class="nav-item" href="#banks" data-section-label="Работа с банками"><span data-icon="phone"></span> Работа с банками <b id="nav-banks-count">—</b></a>
+      <a class="nav-item" href="#modules" data-section-label="Другие блоки"><span data-icon="grid"></span> Другие блоки <b>0</b></a>
     </nav>
     <div class="sidebar-sync" id="sidebar-sync" hidden>
       <span id="sidebar-sync-status" role="status"></span>
@@ -30,9 +30,9 @@
     <div class="sidebar-bottom"><div class="avatar">ИГ</div><div>Игорь Герцог<small>Личное рабочее пространство</small></div></div>
   </aside>
   <div class="shell">
-    <header class="topbar"><div class="breadcrumb">Казначейство <span>/</span> <strong>Реестр задач</strong></div><div class="topbar-right"><span id="today"></span><span class="user-dot">ИГ</span></div></header>
+    <header class="topbar"><div class="breadcrumb">Казначейство <span>/</span> <strong id="section-breadcrumb">Реестр задач</strong></div><div class="topbar-right"><span id="today"></span><span class="user-dot">ИГ</span></div></header>
     <main>
-      <section id="tasks">
+      <section id="tasks" data-workspace-section>
         <div class="page-heading"><div><div class="eyebrow">КОНТРОЛЬ И ИСПОЛНЕНИЕ</div><h1>Задачи Казначейства</h1><p>Сроки, ответственность и движение каждой задачи.</p></div><button class="primary" id="new-task"><span data-icon="plus"></span> Новая задача</button></div>
         <div class="filebar"><div class="filebar-icon" data-icon="file"></div><div class="filebar-text"><strong id="file-title">Единый файл учёта</strong><span id="file-status" aria-live="polite">Подключите XLSX для автоматического сохранения</span></div><div class="file-actions"><button id="github-connect" class="subtle">GitHub XLSX</button><button id="github-refresh" class="subtle">Обновить с GitHub</button><button id="connect-file" class="subtle"><span data-icon="link"></span> Подключить XLSX</button><button id="import-file" class="subtle"><span data-icon="upload"></span> Открыть XLSX</button><button id="export-file"><span data-icon="download"></span> Скачать XLSX</button></div></div>
         <div id="file-warning" class="notice">Пока файл не подключён, записи сохраняются в этом браузере. Чтобы передать все данные, скачайте XLSX.</div>
@@ -44,10 +44,10 @@
           <div class="registry-foot"><span><span class="tiny-dot"></span> История изменений сохраняется по каждой задаче</span><span>Приоритет: перетащите строку за ⋮⋮</span></div>
         </section>
       </section>
-      <section class="modules" id="executors" aria-label="Справочник исполнителей"></section>
-      <section class="modules" id="function-matrix" aria-label="Матрица функций казначейства"></section>
-      <section class="modules" id="banks" aria-label="Работа с банками"></section>
-      <section class="modules" id="modules"><div class="section-heading"><div><h2>Другие направления</h2><p>Отдельные блоки с собственной структурой учёта.</p></div><span class="soon">СЛЕДУЮЩИЙ ЭТАП</span></div><div class="module-grid"><article><span class="module-symbol" data-icon="file"></span><h3>Подготовка отчётов</h3><p>Периодичность, сбор данных и согласование отчётности.</p><span class="module-future">Запланировано</span></article><article class="module-placeholder"><span class="module-symbol" data-icon="plus"></span><h3>Новые направления</h3><p>Рабочее пространство будет расширяться по мере задач.</p><span class="module-future">Структуру определим отдельно</span></article></div></section>
+      <section class="modules" id="executors" data-workspace-section hidden aria-label="Справочник исполнителей"></section>
+      <section class="modules" id="function-matrix" data-workspace-section hidden aria-label="Матрица функций казначейства"></section>
+      <section class="modules" id="banks" data-workspace-section hidden aria-label="Работа с банками"></section>
+      <section class="modules" id="modules" data-workspace-section hidden><div class="section-heading"><div><h2>Другие направления</h2><p>Отдельные блоки с собственной структурой учёта.</p></div><span class="soon">СЛЕДУЮЩИЙ ЭТАП</span></div><div class="module-grid"><article><span class="module-symbol" data-icon="file"></span><h3>Подготовка отчётов</h3><p>Периодичность, сбор данных и согласование отчётности.</p><span class="module-future">Запланировано</span></article><article class="module-placeholder"><span class="module-symbol" data-icon="plus"></span><h3>Новые направления</h3><p>Рабочее пространство будет расширяться по мере задач.</p><span class="module-future">Структуру определим отдельно</span></article></div></section>
       <footer><span>© Igor Gertsog, 2026</span><span>VOXYS · Казначейство</span></footer>
     </main>
   </div>

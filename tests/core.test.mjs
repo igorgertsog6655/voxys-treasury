@@ -2,12 +2,43 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
-import {blankState,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts} from '../src/model.js';
+import {blankState,hasRecords,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts,saveTreasuryFunction,deleteTreasuryFunction,setFunctionAssignment} from '../src/model.js';
 import {transitionTask} from '../src/kanban.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Матрица сохраняет галочки по ID при переименовании, а удаление функции снимает её назначения',()=>{
+  let state=savePerson(create(),{fullName:'Казначей',email:'matrix@example.com',position:'Казначейство'},'Игорь');
+  state=saveTreasuryFunction(state,{name:'Согласование лимитов'});
+  const person=state.people[0],row=state.treasuryFunctions.at(-1);
+  state=setFunctionAssignment(state,row.id,person.id,true);
+  state=saveTreasuryFunction(state,{id:row.id,name:'Согласование банковских лимитов'});
+  state=savePerson(state,{...person,fullName:'Ведущий казначей'},'Игорь');
+  assert.deepEqual(state.functionAssignments,[{functionId:row.id,personId:person.id}]);
+  assert.equal(setFunctionAssignment(state,row.id,person.id,true),state);
+  assert.throws(()=>setFunctionAssignment(state,row.id,'missing',true),/не найдены/);
+  assert.deepEqual(decodeWorkbook(encodeWorkbook(state,X),X),state);
+  assert.deepEqual(setFunctionAssignment(state,row.id,person.id,false).functionAssignments,[]);
+  state=deleteTreasuryFunction(state,row.id);
+  assert.ok(!state.treasuryFunctions.some(item=>item.id===row.id));
+  assert.deepEqual(state.functionAssignments,[]);
+  assert.equal(state.people.length,1);
+});
+test('Старый XLSX получает стартовые функции, а пустая матрица остаётся пустой после записи',()=>{
+  const state=create(),old=toWorkbook(state,X);
+  old.Sheets['Настройки'].B3.v=5;
+  for(const name of ['Функции казначейства','Назначения по функциям']){
+    delete old.Sheets[name];
+    old.SheetNames=old.SheetNames.filter(sheet=>sheet!==name);
+  }
+  assert.deepEqual(decodeWorkbook(X.write(old,{type:'array',bookType:'xlsx'}),X),state);
+  const empty=blankState();
+  assert.equal(hasRecords(empty),false);
+  empty.treasuryFunctions=[];
+  assert.equal(hasRecords(empty),true);
+  assert.deepEqual(decodeWorkbook(encodeWorkbook(empty,X),X),empty);
+});
 test('Канбан назначает исполнителя, сохраняет комментарий и логирует переходы в обе стороны',()=>{
   let state=savePerson(create(),{fullName:'Новый исполнитель',email:'executor@example.com',position:'Казначей'},'Игорь');
   const id=state.tasks[0].id;

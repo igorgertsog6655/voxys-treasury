@@ -5,8 +5,9 @@
   <meta name="theme-color" content="#20252b">
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
-  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=kanban-1">
-  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=kanban-1"></script>
+  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=matrix-1">
+  <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=matrix-1"}}</script>
+  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=matrix-1"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -17,6 +18,7 @@
     <nav class="section-nav" aria-label="Разделы казначейства">
       <a class="nav-item active" href="#tasks"><span data-icon="tasks"></span> Реестр задач <b id="nav-count">—</b></a>
       <a class="nav-item" href="#executors"><span data-icon="tasks"></span> Исполнители <b id="nav-people-count">—</b></a>
+      <a class="nav-item" href="#function-matrix"><span data-icon="grid"></span> Матрица функций <b id="nav-functions-count">—</b></a>
       <a class="nav-item" href="#banks"><span data-icon="phone"></span> Работа с банками <b id="nav-banks-count">—</b></a>
       <a class="nav-item" href="#modules"><span data-icon="grid"></span> Другие блоки <b>0</b></a>
     </nav>
@@ -43,6 +45,7 @@
         </section>
       </section>
       <section class="modules" id="executors" aria-label="Справочник исполнителей"></section>
+      <section class="modules" id="function-matrix" aria-label="Матрица функций казначейства"></section>
       <section class="modules" id="banks" aria-label="Работа с банками"></section>
       <section class="modules" id="modules"><div class="section-heading"><div><h2>Другие направления</h2><p>Отдельные блоки с собственной структурой учёта.</p></div><span class="soon">СЛЕДУЮЩИЙ ЭТАП</span></div><div class="module-grid"><article><span class="module-symbol" data-icon="file"></span><h3>Подготовка отчётов</h3><p>Периодичность, сбор данных и согласование отчётности.</p><span class="module-future">Запланировано</span></article><article class="module-placeholder"><span class="module-symbol" data-icon="plus"></span><h3>Новые направления</h3><p>Рабочее пространство будет расширяться по мере задач.</p><span class="module-future">Структуру определим отдельно</span></article></div></section>
       <footer><span>© Igor Gertsog, 2026</span><span>VOXYS · Казначейство</span></footer>

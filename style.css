@@ -48,3 +48,20 @@
 .board-card-heading{display:flex;align-items:center;justify-content:space-between}
 .board-grip{color:#7a8492;font-size:16px;line-height:1}
 .board-card-stage{display:block;font-size:11px;overflow-wrap:anywhere}
+
+.matrix-heading{gap:12px;flex-wrap:wrap}
+.matrix-hint{padding:12px 18px;color:#626b79;font-size:12px}
+.matrix-hint a{color:#23614e}
+.matrix-table{width:100%;min-width:100%;table-layout:auto}
+.matrix-table th,.matrix-table td{padding:12px 14px}
+.matrix-table thead th:not(:first-child),.matrix-table td{text-align:center;min-width:145px}
+.matrix-table thead th:not(:first-child){white-space:normal;overflow-wrap:anywhere;min-width:150px}
+.matrix-table thead th small{display:block;margin-top:4px;font-weight:400;text-transform:none}
+.matrix-table tr>th:first-child{position:sticky;left:0;z-index:1;width:34%;min-width:240px;background:#fff;border-right:1px solid #eceef1}
+.matrix-table thead tr>th:first-child{background:#f5f6f8}
+.matrix-function{display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;text-transform:none;letter-spacing:normal;white-space:normal;color:#2d3640}
+.matrix-actions{display:flex;gap:8px}
+.matrix-actions button{padding:3px 0;font-size:11px}
+.matrix-actions [data-function-delete]{color:#9d3b34}
+.matrix-table input[type="checkbox"]{width:18px;height:18px;accent-color:#9a6d04;cursor:pointer}
+@media(max-width:760px){.matrix-table tr>th:first-child{min-width:170px}}

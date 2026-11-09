@@ -1,9 +1,53 @@
 export const STATUSES = ['Бэклог', 'В работе', 'Завершена'];
 export const PRIORITIES = ['Обычный', 'Высокий', 'Низкий'];
 export const FIELDS = {title:'Задача',description:'Описание',questions:'Вопросы для уточнения',due:'Срок',owner:'Основной ответственный',holder:'У кого сейчас',status:'Статус',stage:'Текущий этап',nextStep:'Следующий шаг',priority:'Приоритет',completedAt:'Завершена в'};
-export const blankState = () => ({schema:5,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[]});
-export const hasRecords = state => Boolean(state.tasks.length || state.people.length || state.banks?.length);
-export function migrateState(s) {const next=structuredClone(s);if(next.schema===1){next.schema=2;next.people=[];}if(next.schema===2)next.schema=3;if(next.schema===3)next.schema=4;if(next.schema===4){next.schema=5;next.banks=[];next.bankContacts=[];}if(next.schema===5&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{t.ownerId??='';t.holderId??='';t.questions??='';t.sortOrder??=i;});return next;}
+const starterFunctions = [
+  ['cash-position','Ежедневная позиция по денежным средствам'],
+  ['cash-forecast','Прогноз денежных потоков и платёжный календарь'],
+  ['payments','Платежи и контроль их согласования'],
+  ['receipts','Мониторинг поступлений и сверка банковских выписок'],
+  ['liquidity','Управление ликвидностью, резервами и остатками группы'],
+  ['intercompany','Перераспределение ликвидности и внутригрупповое финансирование'],
+  ['banks','Работа с банками и контроль банковских тарифов'],
+  ['bank-accounts','Банковские счета, полномочия и доступы к банк-клиенту'],
+  ['bank-funding','Привлечение банковского финансирования и управление лимитами'],
+  ['bonds','Выпуск, обслуживание и рефинансирование облигаций'],
+  ['debt','Реестр долга и календарь обслуживания'],
+  ['covenants','Контроль ковенантов и обязательств перед кредиторами'],
+  ['security','Банковские гарантии, залоги и поручительства'],
+  ['investments','Размещение временно свободных средств'],
+  ['financial-risk','Валютные и процентные риски, хеджирование'],
+  ['reporting','Казначейская отчётность и показатели'],
+  ['controls','Политики казначейства и внутренний контроль'],
+  ['systems','Казначейские системы и автоматизация']
+];
+const makeStarterFunctions = () => starterFunctions.map(([id,name])=>({id,name}));
+export const blankState = () => ({
+  schema:6,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[],
+  treasuryFunctions:makeStarterFunctions(),functionAssignments:[]
+});
+export function hasRecords(state) {
+  const functions=state.treasuryFunctions;
+  const matrixEdited=functions&&(functions.length!==starterFunctions.length||
+    functions.some(({id,name},i)=>id!==starterFunctions[i][0]||name!==starterFunctions[i][1]));
+  return Boolean(state.tasks.length||state.people.length||state.banks?.length||state.functionAssignments?.length||matrixEdited);
+}
+export function migrateState(s) {
+  const next=structuredClone(s);
+  if(next.schema===1){next.schema=2;next.people=[];}
+  if(next.schema===2)next.schema=3;
+  if(next.schema===3)next.schema=4;
+  if(next.schema===4){next.schema=5;next.banks=[];next.bankContacts=[];}
+  if(next.schema===5){
+    next.schema=6;
+    next.treasuryFunctions=makeStarterFunctions();
+    next.functionAssignments=[];
+  }
+  if(next.schema===6&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{
+    t.ownerId??='';t.holderId??='';t.questions??='';t.sortOrder??=i;
+  });
+  return next;
+}
 export const uid = () => crypto.randomUUID();
 export function today() { const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Novosibirsk',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); return ['year','month','day'].map(k=>p.find(x=>x.type===k).value).join('-'); }
 export function isDate(s) { return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0,10)===s; }
@@ -36,7 +80,8 @@ export function saveTask(state, input, author, comment='') {
 export function addComment(state,taskId,author,text) {if(!state.tasks.some(t=>t.id===taskId)) throw Error('Задача не найдена.');if(!author.trim()||!text.trim()) throw Error('Заполните автора и комментарий.');if(author.length>120||text.length>15000) throw Error('Слишком длинное имя или комментарий.');const next=structuredClone(state);next.comments.push({id:uid(),taskId,at:new Date().toISOString(),author:author.trim(),text:text.trim()});next.revision++;return next;}
 export function validateState(s) {
   s=migrateState(s);
-  if(s?.schema!==5||!Number.isSafeInteger(s.revision)||s.revision<0||!Array.isArray(s.tasks)||!Array.isArray(s.history)||!Array.isArray(s.comments)||!Array.isArray(s.people)||!Array.isArray(s.banks)||!Array.isArray(s.bankContacts)) throw Error('Формат данных не поддерживается.');
+  if(s?.schema!==6||!Number.isSafeInteger(s.revision)||s.revision<0||
+    !['tasks','history','comments','people','banks','bankContacts','treasuryFunctions','functionAssignments'].every(key=>Array.isArray(s[key])))throw Error('Формат данных не поддерживается.');
   const personIds=new Set(),emails=new Set();for(const p of s.people){validatePerson(p);if(!p.id||personIds.has(p.id)||emails.has(p.email.toLowerCase()))throw Error('Повторяющийся ID или электронный адрес исполнителя.');personIds.add(p.id);emails.add(p.email.toLowerCase());}
   for(const t of s.tasks)for(const k of ['ownerId','holderId'])if(t[k]&&!personIds.has(t[k]))throw Error('В задаче указан неизвестный исполнитель.');
   const ids=new Set(),orders=new Set(); for(const t of s.tasks){validateTask(t);if(orders.has(t.sortOrder))throw Error('Повторяющийся порядок задач.');orders.add(t.sortOrder);if(!t.id||ids.has(t.id))throw Error('Пустой или повторяющийся ID задачи.');ids.add(t.id);for(const k of ['createdAt','updatedAt'])if(!t[k]||!Number.isFinite(Date.parse(t[k])))throw Error('Некорректная дата записи.');}
@@ -56,7 +101,62 @@ export function validateState(s) {
     validateBankContact(contact);
     contactIds.add(contact.id);
   }
+  validateFunctionMatrix(s,personIds);
   return s;
+}
+function validateFunctionMatrix(state,personIds) {
+  const functions=new Map(),names=new Set();
+  for(const row of state.treasuryFunctions){
+    validateFunctionName(row.name);
+    const name=normalizeFunctionName(row.name);
+    if(typeof row.id!=='string'||!row.id||functions.has(row.id)||names.has(name))throw Error('Повторяется название или ID функции.');
+    functions.set(row.id,new Set());
+    names.add(name);
+  }
+  for(const {functionId,personId} of state.functionAssignments){
+    const assigned=functions.get(functionId);
+    if(!assigned||!personIds.has(personId))throw Error('В матрице указана неизвестная функция или исполнитель.');
+    if(assigned.has(personId))throw Error('Назначение в матрице повторяется.');
+    assigned.add(personId);
+  }
+}
+const normalizeFunctionName = name => name.trim().toLocaleLowerCase('ru');
+function validateFunctionName(name) {
+  if(typeof name!=='string'||!name.trim()||name.length>200)throw Error('Укажите название функции (до 200 символов).');
+}
+export function saveTreasuryFunction(state,{id,name}) {
+  const next=validateState(state);
+  name=name.trim();
+  validateFunctionName(name);
+  if(next.treasuryFunctions.some(row=>row.id!==id&&normalizeFunctionName(row.name)===normalizeFunctionName(name)))throw Error('Функция с таким названием уже есть.');
+  if(id){
+    const row=next.treasuryFunctions.find(row=>row.id===id);
+    if(!row)throw Error('Функция не найдена.');
+    if(row.name===name)return state;
+    row.name=name;
+  }else{
+    next.treasuryFunctions.push({id:uid(),name});
+  }
+  next.revision++;
+  return next;
+}
+export function deleteTreasuryFunction(state,id) {
+  const next=validateState(state);
+  if(!next.treasuryFunctions.some(row=>row.id===id))throw Error('Функция не найдена.');
+  next.treasuryFunctions=next.treasuryFunctions.filter(row=>row.id!==id);
+  next.functionAssignments=next.functionAssignments.filter(row=>row.functionId!==id);
+  next.revision++;
+  return next;
+}
+export function setFunctionAssignment(state,functionId,personId,checked) {
+  const next=validateState(state);
+  if(!next.treasuryFunctions.some(row=>row.id===functionId)||!next.people.some(person=>person.id===personId))throw Error('Функция или исполнитель не найдены.');
+  const index=next.functionAssignments.findIndex(row=>row.functionId===functionId&&row.personId===personId);
+  if(checked===(index>=0))return state;
+  if(checked)next.functionAssignments.push({functionId,personId});
+  else next.functionAssignments.splice(index,1);
+  next.revision++;
+  return next;
 }
 export function validatePerson(p){if(typeof p.fullName!=='string'||!p.fullName.trim()||p.fullName.length>180)throw Error('Укажите ФИО (до 180 символов).');if(typeof p.position!=='string'||!p.position.trim()||p.position.length>200)throw Error('Укажите должность (до 200 символов).');if(typeof p.email!=='string'||p.email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))throw Error('Укажите корректный электронный адрес.');if(typeof p.active!=='boolean')throw Error('Некорректный статус исполнителя.');}
 function validateBankName(name) {

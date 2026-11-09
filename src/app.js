@@ -1,3 +1,4 @@
+import {createFunctionMatrix} from './function-matrix.js';
 import {createBanksUI} from './banks.js';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js';
@@ -5,7 +6,7 @@ import {createPeopleUI} from './people.js?v=kanban-1';
 import {createKanbanMoves} from './kanban.js';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
-import {encodeWorkbook,decodeWorkbook} from './workbook.js';
+import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=matrix-1';
 import {icon,hydrateIcons} from './icons.js';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='voxys.treasury.v1';let state=blankState(),rawAtLoad=localStorage.getItem(KEY),conflict=false;
@@ -72,14 +73,15 @@ function renderNavigationCounts() {
   const counts={
     '#nav-count':state.tasks.length,
     '#nav-people-count':state.people.length,
-    '#nav-banks-count':state.banks.length
+    '#nav-banks-count':state.banks.length,
+    '#nav-functions-count':state.treasuryFunctions.length
   };
   for(const [selector,count] of Object.entries(counts)){
     const badge=$(selector);
     if(badge)badge.textContent=count;
   }
 }
-function render(){renderNavigationCounts();peopleUI.render();banksUI.render();const selected=$('#filter-owner').value;const owners=[...new Set(state.tasks.map(t=>t.owner))].sort((a,b)=>a.localeCompare(b,'ru'));$('#filter-owner').innerHTML='<option value="">Все ответственные</option>'+owners.map(o=>`<option ${o===selected?'selected':''}>${esc(o)}</option>`).join('');$('#people').innerHTML=[...new Set(state.tasks.flatMap(t=>[t.owner,t.holder]))].map(o=>`<option value="${esc(o)}">`).join('');renderStats();renderList();fileStatus();}
+function render(){renderNavigationCounts();peopleUI.render();banksUI.render();functionMatrix.render();const selected=$('#filter-owner').value;const owners=[...new Set(state.tasks.map(t=>t.owner))].sort((a,b)=>a.localeCompare(b,'ru'));$('#filter-owner').innerHTML='<option value="">Все ответственные</option>'+owners.map(o=>`<option ${o===selected?'selected':''}>${esc(o)}</option>`).join('');$('#people').innerHTML=[...new Set(state.tasks.flatMap(t=>[t.owner,t.holder]))].map(o=>`<option value="${esc(o)}">`).join('');renderStats();renderList();fileStatus();}
 function resetFilters(){$('#search').value='';$('#filter-status').value='';$('#filter-owner').value='';$('#filter-due').value='';renderStats();renderList();}
 function openEditor(id){if(conflict||busy||githubUI?.isWorking())return toast('Редактирование недоступно. Проверьте сообщение о сохранении.');const t=state.tasks.find(t=>t.id===id),form=$('#task-form');form.reset();$('#form-error').textContent='';$('#editor-title').textContent=t?'Редактирование задачи':'Новая задача';for(const k of ['id',...Object.keys(FIELDS).filter(k=>k!=='completedAt')])form.elements[k].value=t?.[k]??(k==='status'?'Бэклог':k==='priority'?'Обычный':'');form.elements.links.value=t?.links.join('\n')||'';form.elements.author.value=localStorage.getItem('voxys.author')||'Игорь Герцог';peopleUI.fill(form,t);$('#editor').showModal();form.elements.title.focus();}
 function openDetails(id){const t=state.tasks.find(t=>t.id===id);if(!t)return;selectedId=id;const comments=state.comments.filter(c=>c.taskId===id).sort((a,b)=>a.at.localeCompare(b.at)),history=state.history.filter(h=>h.taskId===id).sort((a,b)=>b.at.localeCompare(a.at));
@@ -104,6 +106,10 @@ for(const el of ['#filter-status','#edit-status'])$(el).insertAdjacentHTML('befo
 const inlineQuestions=createInlineQuestions({getState:()=>state,commit,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking(),refresh:renderList,toast,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true});
 const canEditRecords=()=>!busy&&!conflict&&!githubUI?.isWorking();
 const banksUI=createBanksUI({getState:()=>state,commit,canEdit:canEditRecords,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true,toast,esc,formatDate,icon});
+const functionMatrix=createFunctionMatrix({
+  getState:()=>state,commit,canEdit:canEditRecords,toast,esc,icon,
+  isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true
+});
 const peopleUI=createPeopleUI({getState:()=>state,commit,toast,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking()});
 githubUI=createGitHubUI({getState:()=>state,encode:encodeWorkbook,decode:decodeWorkbook,replaceLocal:commitImport,setRemote:store=>{remoteStore=store;remoteRevision=store?state.revision:-1;remoteError='';githubConnectionIssue='';handle=null;baseline=null;},canEdit:()=>!busy&&!conflict,toast,refresh:(error='')=>{if(error)githubConnectionIssue=error;render();if(error)fileStatus(error);},hasUnsynced:()=>localStorage.getItem('voxys.github.dirty')==='1'});
 $('#sidebar-sync-refresh')?.addEventListener('click',()=>githubUI.refreshFromGitHub());

@@ -19,3 +19,11 @@
 .bank-history-heading h3{margin:0}
 .bank-contact dd{white-space:pre-wrap;overflow-wrap:anywhere}
 .bank-contact .detail-grid{margin-bottom:0}
+
+.section-nav .nav-item b{flex-shrink:0;min-width:23px;text-align:center;font-variant-numeric:tabular-nums}
+@media(max-width:760px){
+  .sidebar{height:auto;flex-wrap:wrap;gap:8px 16px}
+  .section-nav{flex-basis:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .section-nav .nav-item{display:flex;gap:6px;padding:6px;margin:0;font-size:11px}
+  .section-nav .nav-item svg{width:14px;height:14px}
+}

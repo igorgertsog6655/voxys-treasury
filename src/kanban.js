@@ -9,7 +9,7 @@ export function transitionTask(state,{id,from,status,assignment,author,comment})
   return saveTask(state,{...task,status,holder:assignment.holder,holderId:assignment.holderId},author,comment);
 }
 
-export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,esc,isFullySaved}) {
+export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,esc,isFullySaved,refresh}) {
   document.body.insertAdjacentHTML('beforeend',`
     <dialog id="kanban-move-dialog" aria-labelledby="kanban-move-title">
       <form id="kanban-move-form">
@@ -36,6 +36,7 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
   const form=dialog.querySelector('form');
   const error=form.querySelector('.form-error');
   const submit=form.querySelector('[type="submit"]');
+  const closeButtons=[...form.querySelectorAll('[data-close]')];
   let pending=null;
   let dragged=null;
   let highlighted=null;
@@ -44,7 +45,7 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
     if(!canEdit())return toast('Перенос сейчас недоступен. Проверьте статус сохранения.');
     const task=getState().tasks.find(item=>item.id===id);
     if(!task||dialog.open||target===task.status)return;
-    pending={id,from:task.status};
+    pending={id,from:task.status,target};
     form.reset();
     document.getElementById('kanban-move-task').textContent=task.title;
     document.getElementById('kanban-move-from').textContent='Текущий статус: '+task.status;
@@ -56,8 +57,30 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
     form.elements.author.value=localStorage.getItem('voxys.author')||'Игорь Герцог';
     error.textContent='';
     dialog.showModal();
+    if(target)refresh();
     (target?form.elements.holderId:form.elements.status).focus();
   }
+
+  function statusFor(task) {
+    return pending?.id===task.id&&pending.from===task.status&&STATUSES.includes(pending.target)
+      ?pending.target:task.status;
+  }
+  form.elements.status.addEventListener('change',()=>{
+    if(!pending||submit.disabled)return;
+    pending.target=form.elements.status.value;
+    refresh();
+  });
+  dialog.addEventListener('cancel',event=>{
+    if(submit.disabled)event.preventDefault();
+  });
+  dialog.addEventListener('close',()=>{
+    if(!pending)return;
+    const {id}=pending;
+    pending=null;
+    refresh();
+    [...root.querySelectorAll('[data-kanban-move]')]
+      .find(button=>button.dataset.kanbanMove===id)?.focus({preventScroll:true});
+  });
 
   form.onsubmit=async event=>{
     event.preventDefault();
@@ -69,6 +92,7 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
     const {status,author,comment}=form.elements;
     const target=status.value;
     submit.disabled=true;
+    closeButtons.forEach(button=>{button.disabled=true;});
     error.textContent='';
     try{
       const next=transitionTask(getState(),{
@@ -80,9 +104,12 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
       dialog.close();
       if(isFullySaved())toast(`Задача перемещена в «${target}»`);
     }catch(err){
+      pending.target='';
+      refresh();
       error.textContent=err.message;
     }finally{
       submit.disabled=false;
+      closeButtons.forEach(button=>{button.disabled=false;});
     }
   };
 
@@ -111,7 +138,9 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
     dragged=card;
     event.dataTransfer.effectAllowed='move';
     event.dataTransfer.setData('text/plain',card.dataset.kanbanCard);
-    card.classList.add('board-dragging');
+    requestAnimationFrame(()=>{
+      if(dragged===card)card.classList.add('board-dragging');
+    });
   });
   root.addEventListener('dragover',event=>{
     if(!dragged)return;
@@ -139,4 +168,5 @@ export function createKanbanMoves({root,getState,commit,canEdit,peopleUI,toast,e
     }
   });
   root.addEventListener('dragend',endDrag);
+  return {statusFor};
 }

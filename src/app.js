@@ -3,7 +3,7 @@ import {createBanksUI} from './banks.js?v=9';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js?v=action-icons-1';
 import {createPeopleUI} from './people.js?v=kanban-1';
-import {createKanbanMoves} from './kanban.js';
+import {createKanbanMoves} from './kanban.js?v=move-preview-1';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
 import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=banks-2';
@@ -66,7 +66,28 @@ function filteredTasks(){const q=$('#search').value.toLocaleLowerCase('ru'),stat
 function renderStats(){const defs=[['Всего задач',state.tasks.length,'tasks','all','В реестре',''],['Бэклог',state.tasks.filter(t=>t.status==='Бэклог').length,'list','Бэклог','Запланированы',''],['В работе',state.tasks.filter(t=>t.status==='В работе').length,'clock','В работе','На исполнении','work'],['Завершены',state.tasks.filter(t=>t.status==='Завершена').length,'check','Завершена','Результат зафиксирован','done'],['Просрочены',state.tasks.filter(overdue).length,'alert','late','Требуют внимания','late']];$('#stats').innerHTML=defs.map(([label,n,i,key,hint,cls])=>`<button class="stat ${cls} ${($('#filter-status').value===key||(key==='late'&&$('#filter-due').value==='overdue'))?'selected':''}" data-stat="${key}"><span class="stat-top">${label}<span class="stat-symbol">${icon(i)}</span></span><span class="number">${n}</span><span class="hint">${hint}</span></button>`).join('');}
 function taskMeta(t){const count=state.comments.filter(c=>c.taskId===t.id).length;return `<span class="task-meta"><span><i class="priority-dot ${t.priority==='Высокий'?'high':''}"></i>${esc(t.priority)}</span>${count?`<span>${count} комм.</span>`:''}${t.links.length?`<span>${t.links.length} ссыл.</span>`:''}</span>`;}
 function renderList(){$('#show-task-questions').closest('label').hidden=view!=='table';const tasks=filteredTasks();$('#record-count').textContent=`Показано ${tasks.length} из ${state.tasks.length}`;if(!tasks.length){$('#task-list').innerHTML=`<div class="empty"><div class="empty-icon">${icon(state.tasks.length?'search':'tasks')}</div><h3>${state.tasks.length?'Задачи не найдены':'В этом браузере задачи ещё не загружены'}</h3><p>${state.tasks.length?'Попробуйте изменить запрос или сбросить фильтры.':'Подключите рабочий XLSX на GitHub — задачи будут загружаться автоматически. Для первоначального переноса можно открыть локальный XLSX.'}</p><button class="${state.tasks.length?'':'primary'}" id="empty-action">${icon(state.tasks.length?'reset':'plus')}${state.tasks.length?'Сбросить фильтры':'Загрузить задачи'}</button></div>`;$('#empty-action').onclick=()=>state.tasks.length?resetFilters():$('#github-connect').click();return;}
-  if(view==='board'){$('#task-list').innerHTML=`<p class="board-help">Перетащите карточку в другую колонку или нажмите «Переместить».</p><div class="board">${STATUSES.map(status=>`<section class="board-column" data-kanban-status="${esc(status)}"><div class="board-heading">${statusBadge({status})}<span>${tasks.filter(t=>t.status===status).length}</span></div>${tasks.filter(t=>t.status===status).map(t=>`<article class="board-card" draggable="true" data-kanban-card="${esc(t.id)}" data-kanban-source="${esc(t.status)}"><div class="board-card-heading"><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><span class="board-grip" title="Перетащить карточку" aria-hidden="true">⋮⋮</span></div><button type="button" class="board-card-open" data-task="${esc(t.id)}"><strong>${esc(t.title)}</strong>${person(t.holder)}<span class="muted board-card-stage">${esc(t.stage||'Этап не указан')}</span><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}${overdue(t)?' · Просрочена':''}</span>${taskMeta(t)}</button><button type="button" class="subtle board-move" data-kanban-move="${esc(t.id)}" aria-label="Переместить задачу: ${esc(t.title)}">Переместить</button></article>`).join('')||'<div class="board-empty">Нет задач</div>'}</section>`).join('')}</div>`;return;}
+  if(view==='board'){
+    const taskList=$('#task-list');
+    const scrollLeft=taskList.querySelector('.board')?.scrollLeft||0;
+    const columns=new Map(STATUSES.map(status=>[status,[]]));
+    for(const task of tasks)columns.get(kanbanMoves.statusFor(task)).push(task);
+    taskList.innerHTML=`<p class="board-help">Перетащите карточку в другую колонку или нажмите «Переместить».</p>
+      <div class="board">${[...columns].map(([status,cards])=>`
+        <section class="board-column" data-kanban-status="${esc(status)}">
+          <div class="board-heading">${statusBadge({status})}<span>${cards.length}</span></div>
+          ${cards.map(t=>`
+            <article class="board-card" draggable="true" data-kanban-card="${esc(t.id)}" data-kanban-source="${esc(t.status)}">
+              <div class="board-card-heading"><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><span class="board-grip" title="Перетащить карточку" aria-hidden="true">⋮⋮</span></div>
+              <button type="button" class="board-card-open" data-task="${esc(t.id)}">
+                <strong>${esc(t.title)}</strong>${person(t.holder)}<span class="muted board-card-stage">${esc(t.stage||'Этап не указан')}</span>
+                <span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}${overdue(t)?' · Просрочена':''}</span>${taskMeta(t)}
+              </button>
+              <button type="button" class="subtle board-move" data-kanban-move="${esc(t.id)}" aria-label="Переместить задачу: ${esc(t.title)}">Переместить</button>
+            </article>`).join('')||'<div class="board-empty">Нет задач</div>'}
+        </section>`).join('')}</div>`;
+    taskList.querySelector('.board').scrollLeft=scrollLeft;
+    return;
+  }
   $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showQuestions?'has-questions':''}"><thead><tr><th>Задача</th>${showQuestions?'<th>Вопросы для уточнения</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showQuestions?inlineQuestions.cell(t):''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderNavigationCounts() {
@@ -118,8 +139,8 @@ $('#show-task-questions').checked=showQuestions;
 $('#show-task-questions').onchange=e=>{showQuestions=e.target.checked;localStorage.setItem('voxys.showTaskQuestions',String(showQuestions));renderList();};
 $('#task-sort').value=sortMode;
 $('#task-sort').onchange=e=>{sortMode=e.target.value;localStorage.setItem('voxys.taskSort',sortMode);renderList();};
-createKanbanMoves({
-  root:$('#task-list'),getState:()=>state,commit,canEdit:canEditRecords,peopleUI,toast,esc,
+const kanbanMoves=createKanbanMoves({
+  root:$('#task-list'),getState:()=>state,commit,canEdit:canEditRecords,peopleUI,toast,esc,refresh:renderList,
   isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true
 });
 createTaskOrdering({getState:()=>state,commit,canEdit:()=>!busy&&!conflict&&!githubUI?.isWorking(),isManual:()=>sortMode==='manual',toast,isFullySaved:()=>remoteStore?remoteRevision===state.revision:handle?syncedRevision===state.revision:true});

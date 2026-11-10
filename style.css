@@ -42,6 +42,7 @@
 .board-help{margin:0;padding:11px 20px 0;background:#fcfcfd;color:#626b79;font-size:12px}
 .board-card[draggable="true"]{cursor:grab}
 .board-card.board-dragging{opacity:.5}
+.board-card.board-dragging>*{visibility:hidden}
 .board-column.board-drop-target{background:#fff6d8;outline:2px solid #e6b53d;outline-offset:-2px}
 .board-card-open{display:block;width:100%;padding:0;border:0;background:transparent;text-align:left;white-space:normal;font:inherit;color:inherit}
 .board-card-open:hover{background:transparent}

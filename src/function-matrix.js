@@ -65,7 +65,8 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
           <tr class="matrix-section-row" data-matrix-section-header>
             <th scope="rowgroup"><div class="matrix-function">
               <span>${esc(group.name)} <small>${rows.length}</small></span>
-              ${rows.length?'':`<button type="button" class="subtle" data-section-delete="${esc(group.id)}">Удалить раздел</button>`}
+              ${rows.length?'':`<button type="button" class="icon-button action-icon delete-icon" data-section-delete="${esc(group.id)}"
+                title="Удалить раздел: ${esc(group.name)}" aria-label="Удалить раздел: ${esc(group.name)}">${icon('trash')}</button>`}
             </div></th>
             ${columns.length?`<td colspan="${columns.length}">${rows.length?'':'Перетащите функцию сюда'}</td>`:''}
           </tr>
@@ -76,8 +77,10 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
                 aria-label="Переместить функцию: ${esc(row.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
               <span${marks.has(row.id)?'':' class="matrix-unassigned" title="Нет назначенных исполнителей"'}>${esc(row.name)}</span>
               <div class="matrix-actions">
-                <button type="button" class="subtle" data-function-edit="${esc(row.id)}" aria-label="Изменить функцию: ${esc(row.name)}">Изменить</button>
-                <button type="button" class="subtle" data-function-delete="${esc(row.id)}" aria-label="Удалить функцию: ${esc(row.name)}">Удалить</button>
+                <button type="button" class="icon-button action-icon" data-function-edit="${esc(row.id)}"
+                  title="Изменить функцию: ${esc(row.name)}" aria-label="Изменить функцию: ${esc(row.name)}">${icon('edit')}</button>
+                <button type="button" class="icon-button action-icon delete-icon" data-function-delete="${esc(row.id)}"
+                  title="Удалить функцию: ${esc(row.name)}" aria-label="Удалить функцию: ${esc(row.name)}">${icon('trash')}</button>
               </div>
             </div></th>
             ${columns.map(person=>`

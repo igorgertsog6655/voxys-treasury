@@ -61,9 +61,10 @@
 .matrix-table thead tr>th:first-child{background:#f5f6f8}
 .matrix-function{display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;text-transform:none;letter-spacing:normal;white-space:normal;color:#2d3640}
 .matrix-actions{display:flex;gap:8px}
-.matrix-actions button{padding:3px 0;font-size:11px}
-.matrix-actions [data-function-delete]{color:#9d3b34}
 .matrix-function .matrix-unassigned{color:#b42318}
+.icon-button.action-icon{padding:6px;color:#596677}
+.icon-button.delete-icon{color:#9d3b34}
+.icon-button.delete-icon:hover{background:#fcecea}
 .matrix-table input[type="checkbox"]{width:18px;height:18px;accent-color:#9a6d04;cursor:pointer}
 @media(max-width:760px){.matrix-table tr>th:first-child{min-width:170px}}
 
@@ -79,7 +80,6 @@
 .matrix-table tr.matrix-section-row>th:first-child{border-right-color:#e7edf5}
 .matrix-section-row .matrix-function{font-size:16px;font-weight:700;line-height:1.35;color:#263648}
 .matrix-table .matrix-section-row small{color:#5a6a7d;margin-left:6px;font-size:12px;font-weight:500}
-.matrix-table .matrix-section-row button{font-size:11px;padding:3px 0;color:#9d3b34}
 .matrix-table [data-matrix-row] .matrix-function>span:nth-child(2){flex:1;min-width:100px;overflow-wrap:anywhere}
 .matrix-grip{flex:0 0 auto;cursor:grab;color:#677488;letter-spacing:-2px;padding:3px 4px;user-select:none}
 .matrix-grip:focus-visible{outline:2px solid #9a6d04;outline-offset:1px}

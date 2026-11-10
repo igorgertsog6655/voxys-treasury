@@ -117,7 +117,8 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       <div class="bank-representative comment" data-bank-representative>
         <div class="form-grid">${BANK_REPRESENTATIVE_FIELDS.map(([key,label,limit])=>`
           <label>${label}<input name="representative-${key}" maxlength="${limit}" ${key==='name'?'required':''} value="${esc(person[key]||'')}"></label>`).join('')}</div>
-        <button type="button" class="subtle" data-remove-bank-representative>Убрать контактное лицо</button>
+        <button type="button" class="icon-button action-icon delete-icon" data-remove-bank-representative
+          title="Убрать контактное лицо" aria-label="Убрать контактное лицо">${icon('trash')}</button>
       </div>`);
   }
   document.getElementById('new-bank-representative').onclick=()=>{
@@ -368,7 +369,8 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <div class="bank-history-heading">
           <h3>Статус и контакты банка</h3>
           <div class="bank-actions">
-            <button id="rename-bank" type="button" class="subtle">${icon('edit')} Редактировать карточку</button>
+            <button id="rename-bank" type="button" class="icon-button action-icon"
+              title="Редактировать карточку банка" aria-label="Редактировать карточку банка">${icon('edit')}</button>
             <button id="new-bank-contact" type="button" class="primary">${icon('plus')} Добавить контакт</button>
           </div>
         </div>

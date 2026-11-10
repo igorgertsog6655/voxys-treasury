@@ -1,5 +1,5 @@
 import {createFunctionMatrix} from './function-matrix.js?v=unassigned-1';
-import {createBanksUI} from './banks.js?v=5';
+import {createBanksUI} from './banks.js?v=6';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js';
 import {createPeopleUI} from './people.js?v=kanban-1';

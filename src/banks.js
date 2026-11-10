@@ -80,6 +80,17 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const scrollRange=document.getElementById('bank-scroll-range');
   let editedBankId='',contactBankId='';
   let draft=null;
+  let bankTable=null;
+  let scrollFrame=0;
+
+  function pinColumnHeaders() {
+    const header=bankTable?.tHead;
+    if(!header||!viewport.clientHeight)return;
+    // Keep the header in the same table so horizontal scrolling stays aligned.
+    const {top,height}=bankTable.getBoundingClientRect();
+    const offset=Math.max(0,Math.min(-top,height-header.offsetHeight));
+    header.style.transform=offset?`translateY(${offset}px)`:'';
+  }
 
   function syncScrollbar() {
     const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
@@ -89,7 +100,17 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   }
   scrollRange.addEventListener('input',()=>{viewport.scrollLeft=Number(scrollRange.value);});
   viewport.addEventListener('scroll',syncScrollbar,{passive:true});
-  new ResizeObserver(syncScrollbar).observe(viewport);
+  new ResizeObserver(()=>{
+    syncScrollbar();
+    pinColumnHeaders();
+  }).observe(viewport);
+  window.addEventListener('scroll',()=>{
+    if(scrollFrame)return;
+    scrollFrame=requestAnimationFrame(()=>{
+      scrollFrame=0;
+      pinColumnHeaders();
+    });
+  },{passive:true});
 
   function addRepresentative(person={}) {
     representativeEditor.insertAdjacentHTML('beforeend',`
@@ -180,7 +201,9 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
           </tr>${firstContactRow(bank)}`;
         }).join('')}</tbody>
       </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
+    bankTable=bankList.querySelector('.bank-table');
     syncScrollbar();
+    pinColumnHeaders();
     const input=focusedName&&bankList.querySelector('.bank-inline-form')?.elements[focusedName];
     if(input){
       input.focus({preventScroll:true});

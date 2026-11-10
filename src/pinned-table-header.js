@@ -1,4 +1,4 @@
-export function createPinnedTableHeader(viewport,onResize=()=>{}) {
+export function createPinnedTableHeader(viewport,onResize=()=>{},topControl=null) {
   let table=null;
   let frame=0;
 
@@ -7,8 +7,11 @@ export function createPinnedTableHeader(viewport,onResize=()=>{}) {
     if(!header||!viewport.clientHeight)return;
     // The original header stays in the table and scrolls horizontally with it.
     const {top,height}=table.getBoundingClientRect();
-    const offset=Math.max(0,Math.min(-top,height-header.offsetHeight));
-    header.style.transform=offset?`translateY(${offset}px)`:'';
+    const controlHeight=topControl?.offsetHeight??0;
+    const offset=Math.max(0,Math.min(controlHeight-top,height-header.offsetHeight));
+    const transform=offset?`translateY(${offset}px)`:'';
+    header.style.transform=transform;
+    if(topControl)topControl.style.transform=transform;
   }
 
   function refresh() {
@@ -17,6 +20,7 @@ export function createPinnedTableHeader(viewport,onResize=()=>{}) {
   }
   const observer=new ResizeObserver(refresh);
   observer.observe(viewport);
+  if(topControl)observer.observe(topControl);
   window.addEventListener('scroll',()=>{
     if(frame)return;
     frame=requestAnimationFrame(()=>{

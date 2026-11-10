@@ -1,5 +1,5 @@
 import {addBankContact,compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
-import {createPinnedTableHeader} from './pinned-table-header.js';
+import {createPinnedTableHeader} from './pinned-table-header.js?v=bank-scroll-1';
 
 const contactFields = [
   ['contactedBy','Кто контактировал',180],
@@ -18,12 +18,16 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     </div>
     <div class="registry">
       <p class="bank-reorder-hint">Перетащите строку за ⋮⋮, чтобы изменить порядок банков.</p>
+      <label class="bank-scrollbar bank-scrollbar-top" hidden>
+        <span>Горизонтальная прокрутка</span>
+        <input type="range" min="0" max="0" step="1" value="0" aria-label="Горизонтальная прокрутка таблицы банков сверху">
+      </label>
       <div class="table-scroll bank-table-viewport" id="bank-table-viewport" tabindex="0" role="region" aria-label="Таблица банков">
         <div id="bank-list"></div>
       </div>
-      <label class="bank-scrollbar" id="bank-scrollbar" hidden>
+      <label class="bank-scrollbar" hidden>
         <span>Горизонтальная прокрутка</span>
-        <input id="bank-scroll-range" type="range" min="0" max="0" step="1" value="0">
+        <input type="range" min="0" max="0" step="1" value="0" aria-label="Горизонтальная прокрутка таблицы банков снизу">
       </label>
     </div>`;
   document.body.insertAdjacentHTML('beforeend',`
@@ -77,20 +81,25 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const representativeEditor=document.getElementById('bank-representative-editor');
   const bankList=document.getElementById('bank-list');
   const viewport=document.getElementById('bank-table-viewport');
-  const scrollBar=document.getElementById('bank-scrollbar');
-  const scrollRange=document.getElementById('bank-scroll-range');
+  const scrollBars=[...section.querySelectorAll('.bank-scrollbar')];
+  const scrollRanges=scrollBars.map(bar=>bar.querySelector('input'));
   let editedBankId='',contactBankId='';
   let draft=null;
 
   function syncScrollbar() {
     const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
-    scrollRange.max=String(max);
-    scrollRange.value=String(Math.round(viewport.scrollLeft));
-    scrollBar.hidden=max===0;
+    for(const range of scrollRanges){
+      range.max=String(max);
+      range.value=String(Math.round(viewport.scrollLeft));
+    }
+    for(const bar of scrollBars)bar.hidden=max===0;
   }
-  scrollRange.addEventListener('input',()=>{viewport.scrollLeft=Number(scrollRange.value);});
+  for(const range of scrollRanges)range.addEventListener('input',()=>{
+    viewport.scrollLeft=Number(range.value);
+    syncScrollbar();
+  });
   viewport.addEventListener('scroll',syncScrollbar,{passive:true});
-  const updatePinnedHeader=createPinnedTableHeader(viewport,syncScrollbar);
+  const updatePinnedHeader=createPinnedTableHeader(viewport,syncScrollbar,scrollBars[0]);
 
   function addRepresentative(person={}) {
     representativeEditor.insertAdjacentHTML('beforeend',`

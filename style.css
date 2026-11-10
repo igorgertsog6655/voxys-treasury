@@ -97,3 +97,16 @@
 .bank-table th:nth-child(3),.bank-table th:nth-child(4){width:17%}
 .bank-profile dd,.bank-representative dd{white-space:pre-wrap;overflow-wrap:anywhere}
 .bank-representative .detail-grid{margin-bottom:0}
+
+.bank-table-viewport{max-width:100%;scrollbar-width:none}
+.bank-table-viewport:focus-visible{outline:2px solid #9a6d04;outline-offset:-2px}
+.bank-scrollbar{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid #e8ecf1;background:#f8fafc;color:#596677;font-size:11px}
+.bank-scrollbar[hidden]{display:none}
+.bank-scrollbar input{flex:1;min-width:70px;height:24px;margin:0;padding:0;accent-color:#9a6d04;cursor:ew-resize}
+.bank-inline-edit{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;width:100%;padding:4px 5px;text-align:left;white-space:normal;background:transparent;border:1px solid transparent;color:inherit;font:inherit}
+.bank-inline-edit:hover,.bank-inline-edit:focus-visible{background:#fff9e8;border-color:#e9d79f}
+.bank-inline-icon{flex:none;color:#806521}
+.bank-inline-icon svg{width:13px;height:13px}
+.bank-inline-form input,.bank-inline-form textarea{width:100%;padding:6px;font:inherit}
+.bank-inline-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.bank-inline-actions button{padding:5px 7px;font-size:11px}

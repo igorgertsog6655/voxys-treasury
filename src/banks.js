@@ -14,7 +14,15 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       <div><h2>Работа с банками</h2><p>Стадии переговоров, следующие шаги, контактные лица и история общения.</p></div>
       <button id="new-bank" class="primary" type="button">${icon('plus')} Добавить банк</button>
     </div>
-    <div class="registry" id="bank-list"></div>`;
+    <div class="registry">
+      <div class="table-scroll bank-table-viewport" id="bank-table-viewport" tabindex="0" role="region" aria-label="Таблица банков">
+        <div id="bank-list"></div>
+      </div>
+      <label class="bank-scrollbar" id="bank-scrollbar" hidden>
+        <span>Горизонтальная прокрутка</span>
+        <input id="bank-scroll-range" type="range" min="0" max="0" step="1" value="0">
+      </label>
+    </div>`;
   document.body.insertAdjacentHTML('beforeend',`
     <dialog id="bank-details" aria-labelledby="bank-title">
       <div id="bank-detail-content"></div>
@@ -64,7 +72,22 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const bankForm=bankEditor.querySelector('form');
   const contactForm=contactEditor.querySelector('form');
   const representativeEditor=document.getElementById('bank-representative-editor');
+  const bankList=document.getElementById('bank-list');
+  const viewport=document.getElementById('bank-table-viewport');
+  const scrollBar=document.getElementById('bank-scrollbar');
+  const scrollRange=document.getElementById('bank-scroll-range');
   let editedBankId='',contactBankId='';
+  let draft=null;
+
+  function syncScrollbar() {
+    const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
+    scrollRange.max=String(max);
+    scrollRange.value=String(Math.round(viewport.scrollLeft));
+    scrollBar.hidden=max===0;
+  }
+  scrollRange.addEventListener('input',()=>{viewport.scrollLeft=Number(scrollRange.value);});
+  viewport.addEventListener('scroll',syncScrollbar,{passive:true});
+  new ResizeObserver(syncScrollbar).observe(viewport);
 
   function addRepresentative(person={}) {
     representativeEditor.insertAdjacentHTML('beforeend',`
@@ -83,29 +106,112 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     remove?.closest('[data-bank-representative]').remove();
   });
 
+  function profileCell(bank,[field,label,limit],fallback='') {
+    const description=esc(`${label}: ${bank.name}`);
+    if(draft?.id!==bank.id||draft.field!==field){
+      const value=bank[field];
+      return `<td><button type="button" class="bank-inline-edit" data-bank-inline="${esc(bank.id)}" data-bank-field="${field}"
+        aria-label="Изменить поле «${description}»" title="Изменить поле «${description}»">
+        <span class="bank-summary">${esc(value||'—')}</span><span class="bank-inline-icon" aria-hidden="true">${icon('edit')}</span>
+      </button>${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
+    }
+    const readonly=draft.saving?' readonly':'';
+    const disabled=draft.saving?' disabled':'';
+    const editor=field==='stage'?
+      `<input name="value" maxlength="${limit}" value="${esc(draft.value)}" aria-label="${description}"${readonly}>`:
+      `<textarea name="value" rows="3" maxlength="${limit}" aria-label="${description}"${readonly}>${esc(draft.value)}</textarea>`;
+    return `<td><form class="bank-inline-form">
+      ${editor}
+      <div class="bank-inline-actions">
+        <button type="submit" class="primary"${disabled}>Сохранить</button>
+        <button type="button" class="subtle" data-bank-inline-cancel${disabled}>Отмена</button>
+      </div>
+    </form></td>`;
+  }
+
   function render() {
+    const activeEditor=document.activeElement?.closest('.bank-inline-form');
+    const restoreFocus=bankList.contains(activeEditor)&&document.activeElement.name==='value';
+    const selection=restoreFocus?[document.activeElement.selectionStart,document.activeElement.selectionEnd]:null;
     const {banks,bankContacts}=getState();
     const latestByBank=new Map();
     for(const contact of bankContacts){
       const latest=latestByBank.get(contact.bankId);
       if(!latest||compareBankContacts(contact,latest)<=0)latestByBank.set(contact.bankId,contact);
     }
-    document.getElementById('bank-list').innerHTML=banks.length?`
-      <div class="table-scroll"><table class="bank-table">
-        <thead><tr><th>Банк</th><th>Стадия</th><th>Где сейчас</th><th>Следующий шаг</th><th>Последний контакт</th>${contactFields.slice(0,3).map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
+    bankList.innerHTML=banks.length?`
+      <table class="bank-table">
+        <thead><tr><th>Банк</th>${BANK_PROFILE_FIELDS.map(([,label])=>`<th>${label}</th>`).join('')}<th>Дата последнего контакта</th>${contactFields.slice(0,3).map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
         <tbody>${[...banks].sort((a,b)=>a.name.localeCompare(b.name,'ru')).map(bank=>{
           const latest=latestByBank.get(bank.id);
           return `<tr>
             <td><button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button></td>
-            <td>${esc(bank.stage||'—')}</td>
-            <td><div class="bank-summary">${esc(bank.currentStatus||'—')}</div></td>
-            <td><div class="bank-summary">${esc(bank.nextStep||latest?.nextSteps||'—')}</div></td>
+            ${BANK_PROFILE_FIELDS.map(field=>profileCell(bank,field,field[0]==='nextStep'?latest?.nextSteps:'')).join('')}
             <td>${latest?formatDate(latest.date):'Контактов пока нет'}</td>
             ${contactFields.slice(0,3).map(([key])=>`<td><div class="bank-summary">${esc(latest?.[key]||'—')}</div></td>`).join('')}
           </tr>`;
         }).join('')}</tbody>
-      </table></div>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
+      </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
+    syncScrollbar();
+    const input=selection&&bankList.querySelector('.bank-inline-form [name="value"]');
+    if(input){
+      input.focus({preventScroll:true});
+      input.setSelectionRange(...selection);
+    }
   }
+
+  function closeInline() {
+    const {id,field}=draft;
+    draft=null;
+    render();
+    [...bankList.querySelectorAll('[data-bank-inline]')].find(button=>
+      button.dataset.bankInline===id&&button.dataset.bankField===field)?.focus({preventScroll:true});
+  }
+  const hasUnsaved=()=>Boolean(draft&&draft.value!==draft.original);
+  bankList.addEventListener('click',event=>{
+    if(event.target.closest('[data-bank-inline-cancel]')&&draft&&!draft.saving)return closeInline();
+    const button=event.target.closest('[data-bank-inline]');
+    if(!button)return;
+    if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте статус сохранения.');
+    if(hasUnsaved())return toast('Сохраните или отмените правку в открытой ячейке.');
+    const bank=getState().banks.find(item=>item.id===button.dataset.bankInline);
+    if(!bank)return;
+    const field=button.dataset.bankField;
+    draft={id:bank.id,field,original:bank[field],value:bank[field],saving:false};
+    render();
+    bankList.querySelector('.bank-inline-form [name="value"]')?.focus({preventScroll:true});
+  });
+  bankList.addEventListener('input',event=>{
+    if(draft&&event.target.closest('.bank-inline-form'))draft.value=event.target.value;
+  });
+  bankList.addEventListener('keydown',event=>{
+    const form=event.target.closest('.bank-inline-form');
+    if(!form||!draft||draft.saving)return;
+    if(event.key==='Escape'){event.preventDefault();closeInline();}
+    if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();form.requestSubmit();}
+  });
+  bankList.addEventListener('submit',async event=>{
+    if(!event.target.matches('.bank-inline-form'))return;
+    event.preventDefault();
+    if(!draft||draft.saving||!canEdit())return;
+    const state=getState();
+    const bank=state.banks.find(item=>item.id===draft.id);
+    if(!bank||bank[draft.field]!==draft.original)return toast('Поле изменилось. Скопируйте правку, отмените её и откройте актуальное значение.');
+    try{
+      const next=saveBank(state,{id:bank.id,name:bank.name,[draft.field]:draft.value});
+      if(next!==state){
+        draft.saving=true;
+        render();
+        await commit(next);
+      }
+      closeInline();
+      if(next!==state&&isFullySaved())toast('Поле сохранено');
+    }catch(err){
+      draft.saving=false;
+      render();
+      toast(err.message);
+    }
+  });
 
   function showDetails(id) {
     const {banks,bankContacts}=getState();
@@ -216,5 +322,5 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const bank=event.target.closest('[data-bank]');
     if(bank)showDetails(bank.dataset.bank);
   });
-  return {render};
+  return {render,hasUnsaved};
 }

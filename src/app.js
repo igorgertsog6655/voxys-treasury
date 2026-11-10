@@ -1,5 +1,5 @@
 import {createFunctionMatrix} from './function-matrix.js?v=matrix-2';
-import {createBanksUI} from './banks.js?v=2';
+import {createBanksUI} from './banks.js?v=3';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js';
 import {createPeopleUI} from './people.js?v=kanban-1';
@@ -99,7 +99,7 @@ $('#file-input').onchange=async e=>{try{if(e.target.files[0])await replaceFromFi
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close)return document.getElementById(close.dataset.close).close();const task=e.target.closest('[data-task]');if(task)return openDetails(task.dataset.task);const edit=e.target.closest('[data-edit]');if(edit)return openEditor(edit.dataset.edit);const stat=e.target.closest('[data-stat]');if(stat){$('#filter-status').value=STATUSES.includes(stat.dataset.stat)?stat.dataset.stat:'';$('#filter-due').value=stat.dataset.stat==='late'?'overdue':'';renderStats();renderList();}const tab=e.target.closest('[data-view]');if(tab){view=tab.dataset.view;document.querySelectorAll('[data-view]').forEach(t=>t.classList.toggle('active',t===tab));renderList();}});
 for(const el of ['#search','#filter-status','#filter-owner','#filter-due'])$(el).addEventListener(el==='#search'?'input':'change',()=>{renderStats();renderList();});
 window.addEventListener('storage',e=>{if(e.key===KEY||e.key===null){conflict=true;handle=null;fileStatus();toast('Реестр изменился в другой вкладке. Скачайте копию и обновите страницу.');}});
-window.addEventListener('beforeunload',e=>{if(inlineQuestions.hasUnsaved()){e.preventDefault();e.returnValue='';return;}if((remoteStore?remoteRevision!==state.revision:handle?syncedRevision!==state.revision:copyRevision!==state.revision)&&hasRecords(state)){e.preventDefault();e.returnValue='';}});
+window.addEventListener('beforeunload',e=>{if(inlineQuestions.hasUnsaved()||banksUI.hasUnsaved()){e.preventDefault();e.returnValue='';return;}if((remoteStore?remoteRevision!==state.revision:handle?syncedRevision!==state.revision:copyRevision!==state.revision)&&hasRecords(state)){e.preventDefault();e.returnValue='';}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){renderStats();renderList();}});
 $('#today').textContent=new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Novosibirsk',day:'numeric',month:'long',year:'numeric'}).format(new Date());
 for(const el of ['#filter-status','#edit-status'])$(el).insertAdjacentHTML('beforeend',STATUSES.map(s=>`<option>${s}</option>`).join(''));
@@ -147,7 +147,7 @@ hydrateIcons();render();
 githubUI.restore().then(()=>{
   let lastRefresh=Date.now();
   const refreshOnReturn=()=>{
-    if(document.hidden||handle||!canEditRecords()||document.querySelector('dialog[open]')||inlineQuestions.hasUnsaved())return;
+    if(document.hidden||handle||!canEditRecords()||document.querySelector('dialog[open]')||inlineQuestions.hasUnsaved()||banksUI.hasUnsaved())return;
     if(Date.now()-lastRefresh<5000)return;
     lastRefresh=Date.now();
     void githubUI.refreshFromGitHub({automatic:true});

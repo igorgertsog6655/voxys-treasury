@@ -1,4 +1,4 @@
-import {addBankContact,compareBankContacts,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
+import {addBankContact,compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
 
 const contactFields = [
   ['contactedBy','Кто контактировал',180],
@@ -16,6 +16,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       <button id="new-bank" class="primary" type="button">${icon('plus')} Добавить банк</button>
     </div>
     <div class="registry">
+      <p class="bank-reorder-hint">Перетащите строку за ⋮⋮, чтобы изменить порядок банков.</p>
       <div class="table-scroll bank-table-viewport" id="bank-table-viewport" tabindex="0" role="region" aria-label="Таблица банков">
         <div id="bank-list"></div>
       </div>
@@ -136,7 +137,11 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       data-contact-id="${esc(contact?.id||'')}" aria-label="${editLabel}" title="${editLabel}">
       ${field==='name'?'':`<span class="bank-summary">${esc(display)}</span>`}<span class="bank-inline-icon" aria-hidden="true">${icon('edit')}</span>
     </button>`;
-    if(field==='name')return `<td><div class="bank-name-cell"><button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>${edit}</div></td>`;
+    if(field==='name')return `<td><div class="bank-name-cell">
+      <span class="bank-grip" draggable="true" role="button" tabindex="0" data-bank-drag="${esc(bank.id)}"
+        aria-label="Переместить банк: ${esc(bank.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
+      <button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>${edit}
+    </div></td>`;
     return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
   }
   function firstContactRow(bank) {
@@ -166,9 +171,9 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
         <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
-        <tbody>${[...banks].sort((a,b)=>a.name.localeCompare(b.name,'ru')).map(bank=>{
+        <tbody>${banks.map(bank=>{
           const latest=latestByBank.get(bank.id);
-          return `<tr>
+          return `<tr data-bank-row="${esc(bank.id)}">
             ${inlineCell(bank,['name','Название банка',180])}
             ${BANK_PROFILE_FIELDS.map(field=>inlineCell(bank,field,{fallback:field[0]==='nextStep'?latest?.nextSteps:''})).join('')}
             ${contactColumns.map(field=>inlineCell(bank,field,{contact:latest??null})).join('')}
@@ -192,6 +197,76 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   }
   const hasUnsaved=()=>Boolean(draft&&(draft.firstContact?
     Object.keys(draft.values).some(key=>draft.values[key]!==draft.original[key]):draft.value!==draft.original));
+
+  let draggedRow=null,dropRow=null;
+  function clearDropRow() {
+    dropRow?.classList.remove('bank-drop-before','bank-drop-after');
+    dropRow=null;
+  }
+  function endDrag() {
+    draggedRow?.classList.remove('bank-row-dragging');
+    draggedRow=null;
+    clearDropRow();
+  }
+  function canReorder() {
+    if(draft){toast('Сохраните или отмените правку в открытой ячейке.');return false;}
+    if(!canEdit()){toast('Дождитесь завершения сохранения.');return false;}
+    return true;
+  }
+  async function reorder(id,target,after,restoreFocus=false) {
+    if(!canReorder())return;
+    try{
+      const state=getState(),next=moveBank(state,id,target,after);
+      if(next===state)return;
+      await commit(next);
+      if(restoreFocus)[...bankList.querySelectorAll('[data-bank-drag]')]
+        .find(grip=>grip.dataset.bankDrag===id)?.focus({preventScroll:true});
+    }catch(err){toast(err.message);}
+  }
+  function insertAfter(row,y) {
+    const rect=row.getBoundingClientRect();
+    return y>rect.top+rect.height/2;
+  }
+  bankList.addEventListener('dragstart',event=>{
+    const grip=event.target.closest('[data-bank-drag]');
+    if(!grip)return;
+    if(!canReorder()){event.preventDefault();return;}
+    draggedRow=grip.closest('[data-bank-row]');
+    draggedRow.classList.add('bank-row-dragging');
+    event.dataTransfer.effectAllowed='move';
+    event.dataTransfer.setData('text/plain',grip.dataset.bankDrag);
+  });
+  bankList.addEventListener('dragover',event=>{
+    if(!draggedRow)return;
+    const row=event.target.closest('[data-bank-row]');
+    clearDropRow();
+    if(!row||row===draggedRow)return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect='move';
+    dropRow=row;
+    row.classList.add(insertAfter(row,event.clientY)?'bank-drop-after':'bank-drop-before');
+  });
+  bankList.addEventListener('dragleave',event=>{
+    if(!bankList.contains(event.relatedTarget))clearDropRow();
+  });
+  bankList.addEventListener('drop',event=>{
+    if(!draggedRow)return;
+    const row=event.target.closest('[data-bank-row]');
+    const id=draggedRow.dataset.bankRow;
+    endDrag();
+    if(!row||row.dataset.bankRow===id)return;
+    event.preventDefault();
+    void reorder(id,row.dataset.bankRow,insertAfter(row,event.clientY));
+  });
+  bankList.addEventListener('dragend',endDrag);
+  bankList.addEventListener('keydown',event=>{
+    const grip=event.target.closest('[data-bank-drag]');
+    if(!grip||!event.altKey||!['ArrowUp','ArrowDown'].includes(event.key))return;
+    event.preventDefault();
+    const row=grip.closest('[data-bank-row]'),down=event.key==='ArrowDown';
+    const target=down?row.nextElementSibling:row.previousElementSibling;
+    if(target?.dataset.bankRow)void reorder(grip.dataset.bankDrag,target.dataset.bankRow,down,true);
+  });
   bankList.addEventListener('click',event=>{
     if(event.target.closest('[data-bank-inline-cancel]')&&draft&&!draft.saving)return closeInline();
     const button=event.target.closest('[data-bank-inline]');

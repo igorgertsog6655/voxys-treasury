@@ -5,11 +5,26 @@ import fs from 'node:fs';
 import {blankState,hasRecords,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts,saveTreasuryFunction,deleteTreasuryFunction,setFunctionAssignment} from '../src/model.js';
 import {transitionTask} from '../src/kanban.js';
 import {addFunctionSection,deleteFunctionSection,moveTreasuryFunction} from '../src/model.js';
-import {saveBankContact} from '../src/model.js';
+import {moveBank,saveBankContact} from '../src/model.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Ручной порядок банков сохраняется в XLSX вместе с привязанными контактами',()=>{
+  let state=create();
+  for(const name of ['Банк А','Банк Б','Банк В'])state=saveBank(state,{name});
+  const [a,b,c]=state.banks;
+  state=addBankContact(state,{bankId:c.id,date:'2026-11-10',contactedBy:'Казначей',counterparty:'Менеджер',outcome:'Созвонились'});
+  state=moveBank(state,c.id,a.id);
+  assert.deepEqual(state.banks.map(bank=>bank.id),[c.id,a.id,b.id]);
+  state=moveBank(state,c.id,b.id,true);
+  assert.deepEqual(state.banks.map(bank=>bank.id),[a.id,b.id,c.id]);
+  state=moveBank(state,b.id,a.id);
+  const restored=decodeWorkbook(encodeWorkbook(state,X),X);
+  assert.deepEqual(restored.banks.map(bank=>bank.id),[b.id,a.id,c.id]);
+  assert.deepEqual(restored.bankContacts,state.bankContacts);
+  assert.equal(moveBank(state,b.id,a.id),state);
+});
 test('Исправление контакта в реестре сохраняет его ID и остальные записи истории',()=>{
   let state=saveBank(create(),{name:'Банк А'});
   const bankId=state.banks[0].id;

@@ -288,6 +288,18 @@ export function saveBank(state,input) {
   next.revision++;
   return next;
 }
+export function moveBank(state,id,targetId,after=false) {
+  if(id===targetId)return state;
+  const next=validateState(state);
+  const source=next.banks.findIndex(bank=>bank.id===id);
+  if(source<0||!next.banks.some(bank=>bank.id===targetId))throw Error('Банк для переноса не найден.');
+  const [bank]=next.banks.splice(source,1);
+  const destination=next.banks.findIndex(item=>item.id===targetId)+(after?1:0);
+  if(source===destination)return state;
+  next.banks.splice(destination,0,bank);
+  next.revision++;
+  return next;
+}
 export function addBankContact(state,input) {
   return saveBankContact(state,input);
 }

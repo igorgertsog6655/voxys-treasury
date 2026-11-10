@@ -6,10 +6,14 @@
  .task-name-wrap{display:flex;gap:9px;align-items:flex-start}.task-name-wrap>div{min-width:0}.task-drag-handle{flex:none;cursor:grab;user-select:none;color:#a4acb6;font-size:18px;letter-spacing:-4px;padding:12px 6px 12px 0;line-height:1}.task-drag-handle[draggable="false"]{cursor:default;opacity:.35}.task-drag-handle:focus-visible{outline:2px solid #cda744;outline-offset:2px}.task-dragging{opacity:.4}.task-table tr.drop-before td{box-shadow:inset 0 3px #dcad37}.task-table tr.drop-after td{box-shadow:inset 0 -3px #dcad37}#task-sort{width:140px}
 
 .bank-heading,.bank-history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.bank-table{min-width:900px;table-layout:fixed}
-.bank-table th:first-child{width:15%}
-.bank-table th:nth-child(2){width:13%}
-.bank-table th:nth-child(3),.bank-table th:nth-child(4){width:14%}
+.bank-table{min-width:123rem;table-layout:fixed}
+.bank-table th{white-space:normal;overflow-wrap:anywhere}
+.bank-table th:first-child{width:20em}
+.bank-table th:nth-child(2){width:18em}
+.bank-table th:nth-child(3),.bank-table th:nth-child(4){width:26em}
+.bank-table th:nth-child(5){width:27.5em}
+.bank-table th:nth-child(6),.bank-table th:nth-child(7){width:21em}
+.bank-table th:last-child{width:36em}
 .bank-table td{vertical-align:top;overflow-wrap:anywhere}
 .bank-name{border:0;background:none;padding:0;text-align:left;font:inherit;font-weight:600;color:#23614e;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
 .bank-name:hover{text-decoration:underline}
@@ -92,11 +96,6 @@
 [data-workspace-section][hidden]{display:none}
 .modules[data-workspace-section]{margin-top:0}
 
-.bank-table{min-width:1350px}
-.bank-table th:first-child{width:10.5%}
-.bank-table th:nth-child(2){width:9.5%}
-.bank-table th:nth-child(3),.bank-table th:nth-child(4){width:15%}
-.bank-table th:last-child{width:21%}
 .bank-table thead{position:relative;z-index:2;background:#fafbfc}
 .bank-profile dd,.bank-representative dd{white-space:pre-wrap;overflow-wrap:anywhere}
 .bank-representative .detail-grid{margin-bottom:0}

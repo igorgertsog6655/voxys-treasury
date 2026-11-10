@@ -100,10 +100,11 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   }
   scrollRange.addEventListener('input',()=>{viewport.scrollLeft=Number(scrollRange.value);});
   viewport.addEventListener('scroll',syncScrollbar,{passive:true});
-  new ResizeObserver(()=>{
+  const tableResize=new ResizeObserver(()=>{
     syncScrollbar();
     pinColumnHeaders();
-  }).observe(viewport);
+  });
+  tableResize.observe(viewport);
   window.addEventListener('scroll',()=>{
     if(scrollFrame)return;
     scrollFrame=requestAnimationFrame(()=>{
@@ -190,6 +191,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       const latest=latestByBank.get(contact.bankId);
       if(!latest||compareBankContacts(contact,latest)<=0)latestByBank.set(contact.bankId,contact);
     }
+    if(bankTable)tableResize.unobserve(bankTable);
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
         <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
@@ -203,6 +205,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         }).join('')}</tbody>
       </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
     bankTable=bankList.querySelector('.bank-table');
+    if(bankTable)tableResize.observe(bankTable);
     syncScrollbar();
     pinColumnHeaders();
     const input=focusedName&&bankList.querySelector('.bank-inline-form')?.elements[focusedName];

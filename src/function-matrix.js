@@ -74,7 +74,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
             <th scope="row"><div class="matrix-function">
               <span class="matrix-grip" draggable="true" role="button" tabindex="0" data-matrix-drag="${esc(row.id)}"
                 aria-label="Переместить функцию: ${esc(row.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
-              <span>${esc(row.name)}</span>
+              <span${marks.has(row.id)?'':' class="matrix-unassigned" title="Нет назначенных исполнителей"'}>${esc(row.name)}</span>
               <div class="matrix-actions">
                 <button type="button" class="subtle" data-function-edit="${esc(row.id)}" aria-label="Изменить функцию: ${esc(row.name)}">Изменить</button>
                 <button type="button" class="subtle" data-function-delete="${esc(row.id)}" aria-label="Удалить функцию: ${esc(row.name)}">Удалить</button>

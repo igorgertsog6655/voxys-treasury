@@ -63,6 +63,7 @@
 .matrix-actions{display:flex;gap:8px}
 .matrix-actions button{padding:3px 0;font-size:11px}
 .matrix-actions [data-function-delete]{color:#9d3b34}
+.matrix-function .matrix-unassigned{color:#b42318}
 .matrix-table input[type="checkbox"]{width:18px;height:18px;accent-color:#9a6d04;cursor:pointer}
 @media(max-width:760px){.matrix-table tr>th:first-child{min-width:170px}}
 

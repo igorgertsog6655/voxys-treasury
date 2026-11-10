@@ -37,7 +37,7 @@ function groupMatrixFunctions(state) {
   return state;
 }
 export const blankState = () => groupMatrixFunctions({
-  schema:7,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[],
+  schema:8,revision:0,tasks:[],history:[],comments:[],people:[],banks:[],bankContacts:[],
   treasuryFunctions:makeStarterFunctions(),functionAssignments:[]
 });
 export function hasRecords(state) {
@@ -62,7 +62,11 @@ export function migrateState(s) {
     next.schema=7;
     groupMatrixFunctions(next);
   }
-  if(next.schema===7&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{
+  if(next.schema===7){
+    next.schema=8;
+    if(Array.isArray(next.banks))next.banks=next.banks.map(bank=>({...bank,stage:'',currentStatus:'',nextStep:'',statusDate:'',representatives:[]}));
+  }
+  if(next.schema===8&&Array.isArray(next.tasks))next.tasks.forEach((t,i)=>{
     t.ownerId??='';t.holderId??='';t.questions??='';t.sortOrder??=i;
   });
   return next;
@@ -99,7 +103,7 @@ export function saveTask(state, input, author, comment='') {
 export function addComment(state,taskId,author,text) {if(!state.tasks.some(t=>t.id===taskId)) throw Error('Задача не найдена.');if(!author.trim()||!text.trim()) throw Error('Заполните автора и комментарий.');if(author.length>120||text.length>15000) throw Error('Слишком длинное имя или комментарий.');const next=structuredClone(state);next.comments.push({id:uid(),taskId,at:new Date().toISOString(),author:author.trim(),text:text.trim()});next.revision++;return next;}
 export function validateState(s) {
   s=migrateState(s);
-  if(s?.schema!==7||!Number.isSafeInteger(s.revision)||s.revision<0||
+  if(s?.schema!==8||!Number.isSafeInteger(s.revision)||s.revision<0||
     !['tasks','history','comments','people','banks','bankContacts','treasuryFunctions','functionAssignments','functionSections'].every(key=>Array.isArray(s[key])))throw Error('Формат данных не поддерживается.');
   const personIds=new Set(),emails=new Set();for(const p of s.people){validatePerson(p);if(!p.id||personIds.has(p.id)||emails.has(p.email.toLowerCase()))throw Error('Повторяющийся ID или электронный адрес исполнителя.');personIds.add(p.id);emails.add(p.email.toLowerCase());}
   for(const t of s.tasks)for(const k of ['ownerId','holderId'])if(t[k]&&!personIds.has(t[k]))throw Error('В задаче указан неизвестный исполнитель.');
@@ -109,7 +113,7 @@ export function validateState(s) {
   for(const c of s.comments)if(typeof c.text!=='string'||!c.text.trim())throw Error('Пустой комментарий.');
   const bankIds=new Set(),bankNames=new Set(),contactIds=new Set();
   for(const bank of s.banks){
-    validateBankName(bank.name);
+    validateBank(bank);
     const name=bank.name.trim().toLocaleLowerCase('ru');
     if(typeof bank.id!=='string'||!bank.id||bankIds.has(bank.id)||bankNames.has(name))throw Error('Повторяется название или ID банка.');
     bankIds.add(bank.id);
@@ -232,8 +236,25 @@ export function setFunctionAssignment(state,functionId,personId,checked) {
   return next;
 }
 export function validatePerson(p){if(typeof p.fullName!=='string'||!p.fullName.trim()||p.fullName.length>180)throw Error('Укажите ФИО (до 180 символов).');if(typeof p.position!=='string'||!p.position.trim()||p.position.length>200)throw Error('Укажите должность (до 200 символов).');if(typeof p.email!=='string'||p.email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))throw Error('Укажите корректный электронный адрес.');if(typeof p.active!=='boolean')throw Error('Некорректный статус исполнителя.');}
-function validateBankName(name) {
-  if(typeof name!=='string'||!name.trim()||name.length>180)throw Error('Укажите название банка (до 180 символов).');
+export const BANK_PROFILE_FIELDS=[
+  ['stage','Стадия',180],['currentStatus','Где сейчас',3000],['nextStep','Следующий шаг',3000]
+];
+export const BANK_REPRESENTATIVE_FIELDS=[
+  ['name','Контактное лицо',250],['position','Должность',250],['phone','Телефон',180],['email','Email',254]
+];
+function validateBank(bank) {
+  if(typeof bank.name!=='string'||!bank.name.trim()||bank.name.length>180)throw Error('Укажите название банка (до 180 символов).');
+  for(const [key,label,limit] of BANK_PROFILE_FIELDS){
+    if(typeof bank[key]!=='string'||bank[key].length>limit)throw Error(`Проверьте поле «${label}» (до ${limit} символов).`);
+  }
+  if(bank.statusDate!==''&&!isDate(bank.statusDate))throw Error('Укажите корректную дату обновления статуса.');
+  if(!Array.isArray(bank.representatives))throw Error('Некорректный список контактных лиц банка.');
+  for(const representative of bank.representatives){
+    for(const [key,label,limit] of BANK_REPRESENTATIVE_FIELDS){
+      if(typeof representative[key]!=='string'||representative[key].length>limit||
+        (key==='name'&&!representative[key].trim()))throw Error(`Проверьте поле «${label}» (до ${limit} символов).`);
+    }
+  }
 }
 function validateBankContact(contact) {
   if(!isDate(contact.date))throw Error('Укажите корректную дату контакта.');
@@ -248,19 +269,22 @@ function validateBankContact(contact) {
     if(typeof value!=='string'||(required&&!value.trim())||value.length>limit)throw Error(`Проверьте поле «${label}» (до ${limit} символов).`);
   }
 }
-export function saveBank(state,{id,name}) {
+export function saveBank(state,input) {
   const next=validateState(state);
-  name=name.trim();
-  validateBankName(name);
-  if(next.banks.some(b=>b.id!==id&&b.name.trim().toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru')))throw Error('Банк с таким названием уже есть.');
-  if(id){
-    const bank=next.banks.find(b=>b.id===id);
-    if(!bank)throw Error('Банк не найден.');
-    if(bank.name===name)return state;
-    bank.name=name;
-  }else{
-    next.banks.push({id:uid(),name});
-  }
+  const index=next.banks.findIndex(bank=>bank.id===input.id);
+  if(input.id&&index<0)throw Error('Банк не найден.');
+  const previous=next.banks[index];
+  const bank={id:previous?.id||uid(),name:input.name.trim()};
+  for(const [key] of BANK_PROFILE_FIELDS)bank[key]=(input[key]??previous?.[key]??'').trim();
+  bank.statusDate=input.statusDate??previous?.statusDate??'';
+  bank.representatives=(input.representatives??previous?.representatives??[]).map(person=>
+    Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key])=>[key,(person[key]??'').trim()])));
+  validateBank(bank);
+  if(next.banks.some(item=>item.id!==bank.id&&item.name.trim().toLocaleLowerCase('ru')===bank.name.toLocaleLowerCase('ru')))throw Error('Банк с таким названием уже есть.');
+  if(previous){
+    if(JSON.stringify(previous)===JSON.stringify(bank))return state;
+    next.banks[index]=bank;
+  }else next.banks.push(bank);
   next.revision++;
   return next;
 }

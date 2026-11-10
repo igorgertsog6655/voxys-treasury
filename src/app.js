@@ -1,12 +1,12 @@
 import {createFunctionMatrix} from './function-matrix.js?v=matrix-2';
-import {createBanksUI} from './banks.js';
+import {createBanksUI} from './banks.js?v=2';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js';
 import {createPeopleUI} from './people.js?v=kanban-1';
 import {createKanbanMoves} from './kanban.js';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
-import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=matrix-2';
+import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=banks-2';
 import {icon,hydrateIcons} from './icons.js';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='voxys.treasury.v1';let state=blankState(),rawAtLoad=localStorage.getItem(KEY),conflict=false;

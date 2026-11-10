@@ -1,4 +1,4 @@
-import {validateState,blankState} from './model.js';
+import {validateState,blankState,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
 const taskFields={id:'ID задачи',title:'Задача',due:'Срок',owner:'Основной ответственный',holder:'У кого сейчас',status:'Статус',stage:'Текущий этап',nextStep:'Следующий шаг',priority:'Приоритет',description:'Описание',createdAt:'Создана в',updatedAt:'Изменена в',completedAt:'Завершена в'};
 const histFields={id:'ID записи',taskId:'ID задачи',at:'Дата и время',author:'Автор',field:'Поле',before:'Было',after:'Стало'};
 const commentFields={id:'ID комментария',taskId:'ID задачи',at:'Дата и время',author:'Автор',text:'Комментарий'};
@@ -7,6 +7,8 @@ const assignmentFields={ownerId:'ID ответственного',holderId:'ID �
 const questionFields={questions:'Вопросы для уточнения'};
 const orderFields={sortOrder:'Порядок приоритета'};
 const bankFields={id:'ID банка',name:'Банк'};
+const bankProfileFields={...Object.fromEntries(BANK_PROFILE_FIELDS.map(([key,label])=>[key,label])),statusDate:'Статус обновлён'};
+const bankRepresentativeFields={bankId:'ID банка',...Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key,label])=>[key,label]))};
 const bankContactFields={id:'ID контакта',bankId:'ID банка',date:'Дата контакта',contactedBy:'Кто контактировал',counterparty:'С кем контактировали',outcome:'Статус / договорённости',nextSteps:'Дальнейшие шаги',createdAt:'Добавлено в'};
 const treasuryFunctionFields={id:'ID функции',name:'Функция казначейства'};
 const sectionFields={id:'ID раздела',name:'Раздел'};
@@ -29,7 +31,9 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   const links=state.tasks.flatMap(t=>t.links.map(url=>({taskId:t.id,url})));
   X.utils.book_append_sheet(wb,sheet(links,{taskId:'ID задачи',url:'Ссылка'},X),'Результаты');
   X.utils.book_append_sheet(wb,sheet(state.people.map(p=>({...p,active:p.active?'Да':'Нет'})),personFields,X),'Исполнители');
-  X.utils.book_append_sheet(wb,sheet(state.banks,bankFields,X),'Банки');
+  X.utils.book_append_sheet(wb,sheet(state.banks,{...bankFields,...bankProfileFields},X),'Банки');
+  const representatives=state.banks.flatMap(bank=>bank.representatives.map(person=>({bankId:bank.id,...person})));
+  X.utils.book_append_sheet(wb,sheet(representatives,bankRepresentativeFields,X),'Контактные лица банков');
   const contacts=state.bankContacts.map(c=>({...c,date:new Date(`${c.date}T00:00:00Z`)}));
   const contactsSheet=sheet(contacts,bankContactFields,X);
   for(let i=0;i<contacts.length;i++)contactsSheet[`C${i+2}`].z='dd.mm.yyyy';
@@ -39,7 +43,7 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   X.utils.book_append_sheet(wb,functions,'Функции казначейства');
   X.utils.book_append_sheet(wb,sheet(state.functionSections,sectionFields,X),'Разделы функций');
   X.utils.book_append_sheet(wb,sheet(state.functionAssignments,functionAssignmentFields,X),'Назначения по функциям');
-  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',7],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']]),'Настройки');
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',8],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']]),'Настройки');
   return wb;
 }
 export const encodeWorkbook=(state,X=globalThis.XLSX)=>X.write(toWorkbook(state,X),{bookType:'xlsx',type:'array',compression:true,cellDates:false});
@@ -64,8 +68,9 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   // Formulas are not evaluated by this application. Refuse them rather than trust cached results.
   for(const ws of Object.values(wb.Sheets))for(const [key,cell]of Object.entries(ws))if(!key.startsWith('!')&&cell.f)throw Error('В файле есть формулы. Замените их значениями перед импортом.');
   const meta=readRows(wb,'Настройки',{key:'Параметр',value:'Значение'},X);const get=k=>meta.find(r=>r.key===k)?.value;
-  const version=Number(get('Версия'));if(get('Формат')!=='VOXYS Treasury'||![1,2,3,4,5,6,7].includes(version))throw Error('Откройте XLSX, созданный этим приложением (версии 1–7).');
+  const version=Number(get('Версия'));if(get('Формат')!=='VOXYS Treasury'||![1,2,3,4,5,6,7,8].includes(version))throw Error('Откройте XLSX, созданный этим приложением (версии 1–8).');
   const s=blankState();s.revision=Number(get('Ревизия'));
+  if(version<8)s.schema=version===6?6:7;
   s.tasks=readRows(wb,'Задачи',taskFields,X).map(t=>{const due=readDate(t.due,X);for(const k of Object.keys(t))t[k]=String(t[k]);return {...t,due,links:[]};});
   s.history=readRows(wb,'История',histFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));
   s.comments=readRows(wb,'Комментарии',commentFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));
@@ -73,12 +78,23 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   if(version>=3){const questions=readRows(wb,'Задачи',questionFields,X);for(let i=0;i<s.tasks.length;i++)s.tasks[i].questions=String(questions[i].questions);}
   if(version>=4){const order=readRows(wb,'Задачи',orderFields,X);for(let i=0;i<s.tasks.length;i++){if(order[i].sortOrder==='')throw Error('Не указан порядок задачи.');s.tasks[i].sortOrder=Number(order[i].sortOrder);}}
   if(version>=5){
-    s.banks=readRows(wb,'Банки',bankFields,X).map(b=>({id:String(b.id),name:String(b.name)}));
+    const fields=version>=8?{...bankFields,...bankProfileFields}:bankFields;
+    s.banks=readRows(wb,'Банки',fields,X).map(row=>Object.fromEntries(Object.entries(row)
+      .map(([key,value])=>[key,key==='statusDate'?readDate(value,X):String(value)])));
     s.bankContacts=readRows(wb,'Контакты с банками',bankContactFields,X).map(c=>({
       ...Object.fromEntries(Object.entries(c).map(([key,value])=>[key,String(value)])),
       date:readDate(c.date,X),
       createdAt:c.createdAt instanceof Date?c.createdAt.toISOString():String(c.createdAt)
     }));
+  }
+  if(version>=8){
+    const banks=new Map(s.banks.map(bank=>[bank.id,bank]));
+    for(const bank of s.banks)bank.representatives=[];
+    for(const {bankId,...person} of readRows(wb,'Контактные лица банков',bankRepresentativeFields,X)){
+      const bank=banks.get(String(bankId));
+      if(!bank)throw Error('Контактное лицо относится к неизвестному банку.');
+      bank.representatives.push(Object.fromEntries(Object.entries(person).map(([key,value])=>[key,String(value)])));
+    }
   }
   if(version>=6){
     const fields=version===6?treasuryFunctionFields:{...treasuryFunctionFields,...functionSectionFields};
@@ -86,8 +102,7 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
       .map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,String(value)])));
     s.functionAssignments=readRows(wb,'Назначения по функциям',functionAssignmentFields,X)
       .map(row=>({functionId:String(row.functionId),personId:String(row.personId)}));
-    if(version===6)s.schema=6;
-    else s.functionSections=readRows(wb,'Разделы функций',sectionFields,X)
+    if(version>=7)s.functionSections=readRows(wb,'Разделы функций',sectionFields,X)
       .map(row=>({id:String(row.id),name:String(row.name)}));
   }
   const ids=new Map(s.tasks.map(t=>[t.id,t]));for(const l of readRows(wb,'Результаты',{taskId:'ID задачи',url:'Ссылка'},X)){const t=ids.get(String(l.taskId));if(!t)throw Error('Ссылка относится к неизвестной задаче.');t.links.push(String(l.url));}

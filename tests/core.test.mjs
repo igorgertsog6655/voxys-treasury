@@ -9,6 +9,31 @@ import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Карточка банка и несколько представителей сохраняются отдельно от истории созвонов',()=>{
+  const profile={
+    name:'Банк А',stage:'Запрос документов',currentStatus:'Документы получены',nextStep:'Согласовать встречу',
+    statusDate:'2026-11-09',representatives:[
+      {name:'Первый контакт',position:'Менеджер',phone:'+7 000 000-00-00',email:'first@example.com'},
+      {name:'Второй контакт',position:'',phone:'',email:'second@example.com'}
+    ]
+  };
+  let state=saveBank(create(),profile);
+  state=saveBank(state,{id:state.banks[0].id,name:'Банк А (офис)'});
+  const restored=decodeWorkbook(encodeWorkbook(state,X),X);
+  assert.deepEqual(restored,state);
+  assert.deepEqual(restored.banks[0].representatives,profile.representatives);
+  assert.equal(restored.banks[0].stage,profile.stage);
+  assert.deepEqual(restored.bankContacts,[]);
+  const old=toWorkbook(state,X);
+  old.Sheets['Настройки'].B3.v=7;
+  old.Sheets['Банки']=X.utils.aoa_to_sheet([['ID банка','Банк'],[state.banks[0].id,state.banks[0].name]]);
+  delete old.Sheets['Контактные лица банков'];
+  old.SheetNames=old.SheetNames.filter(name=>name!=='Контактные лица банков');
+  const migrated=decodeWorkbook(X.write(old,{type:'array',bookType:'xlsx'}),X);
+  assert.equal(migrated.banks[0].id,state.banks[0].id);
+  assert.equal(migrated.banks[0].statusDate,'');
+  assert.deepEqual(migrated.banks[0].representatives,[]);
+});
 test('Порядок и раздел функций сохраняются вместе с отметками, непустой раздел нельзя удалить',()=>{
   let state=savePerson(create(),{fullName:'Казначей',email:'groups@example.com',position:'Казначейство'},'Игорь');
   const personId=state.people[0].id;

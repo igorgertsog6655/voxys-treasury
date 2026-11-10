@@ -1,11 +1,12 @@
-import {addBankContact,compareBankContacts,saveBank,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
+import {addBankContact,compareBankContacts,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
 
 const contactFields = [
-  ['contactedBy','Кто контактировал'],
-  ['counterparty','С кем контактировали'],
-  ['outcome','Статус / договорённости'],
-  ['nextSteps','Дальнейшие шаги']
+  ['contactedBy','Кто контактировал',180],
+  ['counterparty','С кем контактировали',250],
+  ['outcome','Статус / договорённости',3000],
+  ['nextSteps','Дальнейшие шаги',3000]
 ];
+const contactColumns=[['date','Дата последнего контакта'],...contactFields.slice(0,3)];
 
 export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,formatDate,icon}) {
   const section=document.getElementById('banks');
@@ -106,33 +107,56 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     remove?.closest('[data-bank-representative]').remove();
   });
 
-  function profileCell(bank,[field,label,limit],fallback='') {
-    const description=esc(`${label}: ${bank.name}`);
-    if(draft?.id!==bank.id||draft.field!==field){
-      const value=bank[field];
-      return `<td><button type="button" class="bank-inline-edit" data-bank-inline="${esc(bank.id)}" data-bank-field="${field}"
-        aria-label="Изменить поле «${description}»" title="Изменить поле «${description}»">
-        <span class="bank-summary">${esc(value||'—')}</span><span class="bank-inline-icon" aria-hidden="true">${icon('edit')}</span>
-      </button>${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
-    }
-    const readonly=draft.saving?' readonly':'';
+  function inlineActions() {
     const disabled=draft.saving?' disabled':'';
-    const editor=field==='stage'?
-      `<input name="value" maxlength="${limit}" value="${esc(draft.value)}" aria-label="${description}"${readonly}>`:
-      `<textarea name="value" rows="3" maxlength="${limit}" aria-label="${description}"${readonly}>${esc(draft.value)}</textarea>`;
-    return `<td><form class="bank-inline-form">
-      ${editor}
-      <div class="bank-inline-actions">
-        <button type="submit" class="primary"${disabled}>Сохранить</button>
-        <button type="button" class="subtle" data-bank-inline-cancel${disabled}>Отмена</button>
-      </div>
-    </form></td>`;
+    return `<div class="bank-inline-actions">
+      <button type="submit" class="primary"${disabled}>Сохранить</button>
+      <button type="button" class="subtle" data-bank-inline-cancel${disabled}>Отмена</button>
+    </div>`;
+  }
+  function inlineInput(field,limit,name,value,description='',required=false) {
+    const attributes=`name="${name}"${description?` aria-label="${description}"`:''}${required?' required':''}${draft.saving?' readonly':''}`;
+    if(field==='date')return `<input type="date" ${attributes} value="${esc(value)}">`;
+    if(limit>250)return `<textarea rows="3" maxlength="${limit}" ${attributes}>${esc(value)}</textarea>`;
+    return `<input maxlength="${limit}" ${attributes} value="${esc(value)}">`;
+  }
+  function inlineCell(bank,[field,label,limit],{contact,fallback=''}={}) {
+    const description=esc(`${label}: ${bank.name}`);
+    if(draft?.id===bank.id&&draft.field===field&&!draft.firstContact){
+      return `<td><form class="bank-inline-form">
+        ${inlineInput(field,limit,'value',draft.value,description,field==='name'||contactColumns.some(([key])=>key===field))}
+        ${inlineActions()}
+      </form></td>`;
+    }
+    const isContact=contact!==undefined;
+    const value=isContact?contact?.[field]:bank[field];
+    const display=field==='date'?(value?formatDate(value):'Добавить контакт'):(value||'—');
+    const editLabel=isContact&&!contact?`Добавить первый контакт: ${description}`:`Изменить поле «${description}»`;
+    const edit=`<button type="button" class="bank-inline-edit${field==='name'?' bank-name-pencil':''}" data-bank-inline="${esc(bank.id)}" data-bank-field="${field}"
+      data-contact-id="${esc(contact?.id||'')}" aria-label="${editLabel}" title="${editLabel}">
+      ${field==='name'?'':`<span class="bank-summary">${esc(display)}</span>`}<span class="bank-inline-icon" aria-hidden="true">${icon('edit')}</span>
+    </button>`;
+    if(field==='name')return `<td><div class="bank-name-cell"><button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>${edit}</div></td>`;
+    return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
+  }
+  function firstContactRow(bank) {
+    if(draft?.id!==bank.id||!draft.firstContact)return '';
+    return `<tr class="bank-new-contact-row"><td colspan="${1+BANK_PROFILE_FIELDS.length+contactColumns.length}">
+      <form class="bank-inline-form bank-new-contact">
+        <strong>Первый контакт · ${esc(bank.name)}</strong>
+        <div class="form-grid">${contactColumns.map(([key,label,limit])=>`<label>${key==='date'?'Дата контакта':label}
+          ${inlineInput(key,limit,key,draft.values[key],'',true)}
+        </label>`).join('')}</div>
+        ${inlineActions()}
+      </form>
+    </td></tr>`;
   }
 
   function render() {
     const activeEditor=document.activeElement?.closest('.bank-inline-form');
-    const restoreFocus=bankList.contains(activeEditor)&&document.activeElement.name==='value';
-    const selection=restoreFocus?[document.activeElement.selectionStart,document.activeElement.selectionEnd]:null;
+    const active=document.activeElement;
+    const focusedName=bankList.contains(activeEditor)?active.name:'';
+    const selection=focusedName&&active.selectionStart!==null?[active.selectionStart,active.selectionEnd]:null;
     const {banks,bankContacts}=getState();
     const latestByBank=new Map();
     for(const contact of bankContacts){
@@ -141,22 +165,21 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     }
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
-        <thead><tr><th>Банк</th>${BANK_PROFILE_FIELDS.map(([,label])=>`<th>${label}</th>`).join('')}<th>Дата последнего контакта</th>${contactFields.slice(0,3).map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
         <tbody>${[...banks].sort((a,b)=>a.name.localeCompare(b.name,'ru')).map(bank=>{
           const latest=latestByBank.get(bank.id);
           return `<tr>
-            <td><button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button></td>
-            ${BANK_PROFILE_FIELDS.map(field=>profileCell(bank,field,field[0]==='nextStep'?latest?.nextSteps:'')).join('')}
-            <td>${latest?formatDate(latest.date):'Контактов пока нет'}</td>
-            ${contactFields.slice(0,3).map(([key])=>`<td><div class="bank-summary">${esc(latest?.[key]||'—')}</div></td>`).join('')}
-          </tr>`;
+            ${inlineCell(bank,['name','Название банка',180])}
+            ${BANK_PROFILE_FIELDS.map(field=>inlineCell(bank,field,{fallback:field[0]==='nextStep'?latest?.nextSteps:''})).join('')}
+            ${contactColumns.map(field=>inlineCell(bank,field,{contact:latest??null})).join('')}
+          </tr>${firstContactRow(bank)}`;
         }).join('')}</tbody>
       </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
     syncScrollbar();
-    const input=selection&&bankList.querySelector('.bank-inline-form [name="value"]');
+    const input=focusedName&&bankList.querySelector('.bank-inline-form')?.elements[focusedName];
     if(input){
       input.focus({preventScroll:true});
-      input.setSelectionRange(...selection);
+      if(selection)input.setSelectionRange(...selection);
     }
   }
 
@@ -167,22 +190,34 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     [...bankList.querySelectorAll('[data-bank-inline]')].find(button=>
       button.dataset.bankInline===id&&button.dataset.bankField===field)?.focus({preventScroll:true});
   }
-  const hasUnsaved=()=>Boolean(draft&&draft.value!==draft.original);
+  const hasUnsaved=()=>Boolean(draft&&(draft.firstContact?
+    Object.keys(draft.values).some(key=>draft.values[key]!==draft.original[key]):draft.value!==draft.original));
   bankList.addEventListener('click',event=>{
     if(event.target.closest('[data-bank-inline-cancel]')&&draft&&!draft.saving)return closeInline();
     const button=event.target.closest('[data-bank-inline]');
     if(!button)return;
     if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте статус сохранения.');
     if(hasUnsaved())return toast('Сохраните или отмените правку в открытой ячейке.');
-    const bank=getState().banks.find(item=>item.id===button.dataset.bankInline);
+    const state=getState();
+    const bank=state.banks.find(item=>item.id===button.dataset.bankInline);
     if(!bank)return;
     const field=button.dataset.bankField;
-    draft={id:bank.id,field,original:bank[field],value:bank[field],saving:false};
+    const isContact=contactColumns.some(([key])=>key===field);
+    const contact=state.bankContacts.find(item=>item.id===button.dataset.contactId&&item.bankId===bank.id);
+    if(isContact&&!contact){
+      const values={date:today(),contactedBy:'',counterparty:'',outcome:''};
+      draft={id:bank.id,field,firstContact:true,original:{...values},values,saving:false};
+    }else{
+      const value=isContact?contact[field]:bank[field];
+      draft={id:bank.id,field,contactId:contact?.id,original:value,value,saving:false};
+    }
     render();
-    bankList.querySelector('.bank-inline-form [name="value"]')?.focus({preventScroll:true});
+    bankList.querySelector('.bank-inline-form')?.elements[draft.firstContact?field:'value']?.focus();
   });
   bankList.addEventListener('input',event=>{
-    if(draft&&event.target.closest('.bank-inline-form'))draft.value=event.target.value;
+    if(!draft||!event.target.closest('.bank-inline-form'))return;
+    if(draft.firstContact)draft.values[event.target.name]=event.target.value;
+    else draft.value=event.target.value;
   });
   bankList.addEventListener('keydown',event=>{
     const form=event.target.closest('.bank-inline-form');
@@ -196,16 +231,24 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     if(!draft||draft.saving||!canEdit())return;
     const state=getState();
     const bank=state.banks.find(item=>item.id===draft.id);
-    if(!bank||bank[draft.field]!==draft.original)return toast('Поле изменилось. Скопируйте правку, отмените её и откройте актуальное значение.');
     try{
-      const next=saveBank(state,{id:bank.id,name:bank.name,[draft.field]:draft.value});
+      const contact=state.bankContacts.find(item=>item.id===draft.contactId&&item.bankId===draft.id);
+      const record=draft.contactId?contact:bank;
+      const stale=draft.firstContact?state.bankContacts.some(item=>item.bankId===draft.id):record?.[draft.field]!==draft.original;
+      if(!bank||stale)return toast('Данные изменились. Скопируйте правку, отмените её и откройте актуальное значение.');
+      const change={[draft.field]:draft.value};
+      let next;
+      if(draft.firstContact)next=addBankContact(state,{bankId:bank.id,...draft.values});
+      else if(contact)next=saveBankContact(state,{id:contact.id,...change});
+      else next=saveBank(state,{id:bank.id,name:bank.name,...change});
+      const message=draft.firstContact?'Контакт добавлен':'Поле сохранено';
       if(next!==state){
         draft.saving=true;
         render();
         await commit(next);
       }
       closeInline();
-      if(next!==state&&isFullySaved())toast('Поле сохранено');
+      if(next!==state&&isFullySaved())toast(message);
     }catch(err){
       draft.saving=false;
       render();

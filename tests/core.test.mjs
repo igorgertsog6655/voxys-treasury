@@ -5,10 +5,26 @@ import fs from 'node:fs';
 import {blankState,hasRecords,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts,saveTreasuryFunction,deleteTreasuryFunction,setFunctionAssignment} from '../src/model.js';
 import {transitionTask} from '../src/kanban.js';
 import {addFunctionSection,deleteFunctionSection,moveTreasuryFunction} from '../src/model.js';
+import {saveBankContact} from '../src/model.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
 const input={title:'Кредитная линия',description:'Согласовать условия',due:'2026-11-12',owner:'Игорь',holder:'Банк',status:'Бэклог',priority:'Высокий',stage:'Первичная заявка',nextStep:'Получить решение',links:['https://example.com/result']};
 const create=()=>saveTask(blankState(),input,'Игорь','Первый комментарий');
+test('Исправление контакта в реестре сохраняет его ID и остальные записи истории',()=>{
+  let state=saveBank(create(),{name:'Банк А'});
+  const bankId=state.banks[0].id;
+  const entry={bankId,date:'2026-11-08',contactedBy:'Казначей',counterparty:'Менеджер',outcome:'Обсудили условия'};
+  state=addBankContact(state,entry);
+  state=addBankContact(state,{...entry,date:'2026-11-10',nextSteps:'Отправить пакет'});
+  const [previous,latest]=state.bankContacts;
+  const edited=saveBankContact(state,{id:latest.id,date:'2026-11-07',outcome:'Согласовали условия'});
+  assert.equal(edited.bankContacts.length,2);
+  assert.deepEqual(edited.bankContacts[0],previous);
+  assert.deepEqual(edited.bankContacts[1],{...latest,date:'2026-11-07',outcome:'Согласовали условия'});
+  assert.equal([...edited.bankContacts].sort(compareBankContacts)[0].id,previous.id);
+  assert.throws(()=>saveBankContact(state,{id:latest.id,outcome:' '}),/Статус/);
+  assert.deepEqual(decodeWorkbook(encodeWorkbook(edited,X),X),edited);
+});
 test('Карточка банка и несколько представителей сохраняются отдельно от истории созвонов',()=>{
   const profile={
     name:'Банк А',stage:'Запрос документов',currentStatus:'Документы получены',nextStep:'Согласовать встречу',

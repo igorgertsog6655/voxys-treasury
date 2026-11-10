@@ -289,16 +289,28 @@ export function saveBank(state,input) {
   return next;
 }
 export function addBankContact(state,input) {
+  return saveBankContact(state,input);
+}
+export function saveBankContact(state,input) {
   const next=validateState(state);
-  if(!next.banks.some(bank=>bank.id===input.bankId))throw Error('Банк не найден.');
+  const index=next.bankContacts.findIndex(contact=>contact.id===input.id);
+  if(input.id&&index<0)throw Error('Контакт не найден.');
+  const previous=next.bankContacts[index];
+  const bankId=previous?.bankId??input.bankId;
+  if(!next.banks.some(bank=>bank.id===bankId))throw Error('Банк не найден.');
   const contact={
-    id:uid(),bankId:input.bankId,date:input.date,
-    contactedBy:input.contactedBy.trim(),counterparty:input.counterparty.trim(),
-    outcome:input.outcome.trim(),nextSteps:input.nextSteps.trim(),
-    createdAt:new Date().toISOString()
+    id:previous?.id??uid(),bankId,date:input.date??previous?.date,
+    contactedBy:(input.contactedBy??previous?.contactedBy??'').trim(),
+    counterparty:(input.counterparty??previous?.counterparty??'').trim(),
+    outcome:(input.outcome??previous?.outcome??'').trim(),
+    nextSteps:(input.nextSteps??previous?.nextSteps??'').trim(),
+    createdAt:previous?.createdAt??new Date().toISOString()
   };
   validateBankContact(contact);
-  next.bankContacts.push(contact);
+  if(previous){
+    if(JSON.stringify(contact)===JSON.stringify(previous))return state;
+    next.bankContacts[index]=contact;
+  }else next.bankContacts.push(contact);
   next.revision++;
   return next;
 }

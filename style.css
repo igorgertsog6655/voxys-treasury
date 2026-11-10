@@ -110,3 +110,12 @@
 .bank-inline-form input,.bank-inline-form textarea{width:100%;padding:6px;font:inherit}
 .bank-inline-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .bank-inline-actions button{padding:5px 7px;font-size:11px}
+
+.bank-name-cell{display:flex;align-items:flex-start;gap:4px}
+.bank-name-cell .bank-name{flex:1;min-width:0}
+.bank-name-cell .bank-name-pencil{flex:none;width:auto;padding:2px 4px}
+.bank-new-contact-row>td{background:#f8fafc}
+.bank-new-contact{max-width:640px;padding:8px 4px}
+.bank-new-contact .form-grid{margin:9px 0;gap:10px}
+.bank-new-contact label{display:grid;gap:4px}
+.bank-new-contact input,.bank-new-contact textarea{max-width:100%}

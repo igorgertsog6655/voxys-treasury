@@ -96,7 +96,7 @@
 [data-workspace-section][hidden]{display:none}
 .modules[data-workspace-section]{margin-top:0}
 
-.bank-table thead{position:relative;z-index:2;background:#fafbfc}
+.bank-table thead,.matrix-table thead{position:relative;z-index:2;background:#fafbfc}
 .bank-profile dd,.bank-representative dd{white-space:pre-wrap;overflow-wrap:anywhere}
 .bank-representative .detail-grid{margin-bottom:0}
 

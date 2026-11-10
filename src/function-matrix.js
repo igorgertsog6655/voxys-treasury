@@ -1,4 +1,5 @@
 import {addFunctionSection,deleteFunctionSection,deleteTreasuryFunction,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
+import {createPinnedTableHeader} from './pinned-table-header.js';
 
 export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isFullySaved}) {
   const section=document.getElementById('function-matrix');
@@ -39,6 +40,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
   const submit=form.querySelector('[type="submit"]');
   const error=form.querySelector('.form-error');
   const list=document.getElementById('matrix-list');
+  const updatePinnedHeader=createPinnedTableHeader(list);
   const newFunction=document.getElementById('new-treasury-function');
   let editingId='';
   let sectionMode=false;
@@ -89,6 +91,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
           </tr>`).join('')}</tbody>`;
         }).join('')}
       </table>`:'<div class="empty"><h3>Разделов пока нет</h3><p>Добавьте раздел, затем создайте в нём функции.</p></div>';
+    updatePinnedHeader(list.querySelector('.matrix-table'));
     if(focused?.matrixFunction){
       const checkbox=[...list.querySelectorAll('[data-matrix-function]')].find(input=>
         input.dataset.matrixFunction===focused.matrixFunction&&input.dataset.matrixPerson===focused.matrixPerson);

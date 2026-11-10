@@ -1,4 +1,5 @@
 import {addBankContact,compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
+import {createPinnedTableHeader} from './pinned-table-header.js';
 
 const contactFields = [
   ['contactedBy','Кто контактировал',180],
@@ -80,17 +81,6 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const scrollRange=document.getElementById('bank-scroll-range');
   let editedBankId='',contactBankId='';
   let draft=null;
-  let bankTable=null;
-  let scrollFrame=0;
-
-  function pinColumnHeaders() {
-    const header=bankTable?.tHead;
-    if(!header||!viewport.clientHeight)return;
-    // Keep the header in the same table so horizontal scrolling stays aligned.
-    const {top,height}=bankTable.getBoundingClientRect();
-    const offset=Math.max(0,Math.min(-top,height-header.offsetHeight));
-    header.style.transform=offset?`translateY(${offset}px)`:'';
-  }
 
   function syncScrollbar() {
     const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
@@ -100,18 +90,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   }
   scrollRange.addEventListener('input',()=>{viewport.scrollLeft=Number(scrollRange.value);});
   viewport.addEventListener('scroll',syncScrollbar,{passive:true});
-  const tableResize=new ResizeObserver(()=>{
-    syncScrollbar();
-    pinColumnHeaders();
-  });
-  tableResize.observe(viewport);
-  window.addEventListener('scroll',()=>{
-    if(scrollFrame)return;
-    scrollFrame=requestAnimationFrame(()=>{
-      scrollFrame=0;
-      pinColumnHeaders();
-    });
-  },{passive:true});
+  const updatePinnedHeader=createPinnedTableHeader(viewport,syncScrollbar);
 
   function addRepresentative(person={}) {
     representativeEditor.insertAdjacentHTML('beforeend',`
@@ -191,7 +170,6 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       const latest=latestByBank.get(contact.bankId);
       if(!latest||compareBankContacts(contact,latest)<=0)latestByBank.set(contact.bankId,contact);
     }
-    if(bankTable)tableResize.unobserve(bankTable);
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
         <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
@@ -204,10 +182,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
           </tr>${firstContactRow(bank)}`;
         }).join('')}</tbody>
       </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
-    bankTable=bankList.querySelector('.bank-table');
-    if(bankTable)tableResize.observe(bankTable);
-    syncScrollbar();
-    pinColumnHeaders();
+    updatePinnedHeader(bankList.querySelector('.bank-table'));
     const input=focusedName&&bankList.querySelector('.bank-inline-form')?.elements[focusedName];
     if(input){
       input.focus({preventScroll:true});

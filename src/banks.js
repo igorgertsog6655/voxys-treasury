@@ -54,6 +54,16 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <div class="dialog-foot"><button type="button" data-close="bank-editor">Отмена</button><button class="primary" type="submit">Сохранить банк</button></div>
       </form>
     </dialog>
+    <dialog id="bank-person-editor" aria-labelledby="bank-person-title">
+      <form id="bank-person-form">
+        <div class="dialog-head"><h2 id="bank-person-title">Добавить контактное лицо</h2><button type="button" class="icon-button" data-close="bank-person-editor" aria-label="Закрыть">${icon('close')}</button></div>
+        <div class="dialog-body">
+          ${BANK_REPRESENTATIVE_FIELDS.map(([key,label,limit])=>`<label>${label}<input name="${key}" maxlength="${limit}" ${key==='name'?'required':''}></label>`).join('')}
+          <p class="form-error" role="alert"></p>
+        </div>
+        <div class="dialog-foot"><button type="button" data-close="bank-person-editor">Отмена</button><button type="submit" class="primary">Сохранить контактное лицо</button></div>
+      </form>
+    </dialog>
     <dialog id="bank-contact-editor" aria-labelledby="bank-contact-title">
       <form id="bank-contact-form">
         <div class="dialog-head"><div><div class="eyebrow" id="contact-bank-name"></div><h2 id="bank-contact-title">Новый контакт</h2></div><button type="button" class="icon-button" data-close="bank-contact-editor" aria-label="Закрыть">${icon('close')}</button></div>
@@ -76,6 +86,9 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const details=document.getElementById('bank-details');
   const bankEditor=document.getElementById('bank-editor');
   const contactEditor=document.getElementById('bank-contact-editor');
+  const personEditor=document.getElementById('bank-person-editor');
+  const personForm=personEditor.querySelector('form');
+  let personBankId='';
   const bankForm=bankEditor.querySelector('form');
   const contactForm=contactEditor.querySelector('form');
   const representativeEditor=document.getElementById('bank-representative-editor');
@@ -366,9 +379,14 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
           <div><dt>Статус обновлён</dt><dd>${bank.statusDate?formatDate(bank.statusDate):'—'}</dd></div>
         </dl>
         <section class="detail-section">
-          <h3>Контактные лица <span class="muted">(${bank.representatives.length})</span></h3>
-          ${bank.representatives.map(person=>`<article class="comment bank-representative">
-            <strong>${esc(person.name)}</strong>
+          <div class="bank-history-heading">
+            <h3>Контактные лица <span class="muted">(${bank.representatives.length})</span></h3>
+            <button id="add-bank-person" type="button" class="primary">${icon('plus')} Добавить контактное лицо</button>
+          </div>
+          ${bank.representatives.map((person,index)=>`<article class="comment bank-representative">
+            <div class="comment-header"><strong>${esc(person.name)}</strong>
+              <button type="button" class="icon-button action-icon delete-icon" data-delete-bank-person="${index}" title="Удалить контактное лицо" aria-label="Удалить контактное лицо: ${esc(person.name)}">${icon('trash')}</button>
+            </div>
             <dl class="detail-grid">${BANK_REPRESENTATIVE_FIELDS.slice(1).filter(([key])=>person[key]).map(([key,label])=>`<div><dt>${label}</dt><dd>${esc(person[key])}</dd></div>`).join('')}</dl>
           </article>`).join('')||'<p class="muted">Контактные лица не указаны.</p>'}
         </section>
@@ -381,6 +399,28 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
       </div>`;
     document.getElementById('rename-bank').onclick=()=>openBankEditor(bank);
     document.getElementById('new-bank-contact').onclick=()=>openContactEditor(bank);
+    document.getElementById('add-bank-person').onclick=()=>{
+      if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте режим хранения.');
+      personBankId=bank.id;
+      personForm.reset();
+      personForm.querySelector('.form-error').textContent='';
+      personEditor.showModal();
+    };
+    for(const button of details.querySelectorAll('[data-delete-bank-person]'))button.onclick=async()=>{
+      if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте режим хранения.');
+      const index=Number(button.dataset.deleteBankPerson);
+      const state=getState(),current=state.banks.find(item=>item.id===id);
+      if(!current||JSON.stringify(current.representatives)!==JSON.stringify(bank.representatives)){
+        showDetails(id);
+        return toast('Контактные лица обновились. Выберите запись заново.');
+      }
+      button.disabled=true;
+      try{
+        await commit(saveBank(state,{id,name:current.name,representatives:current.representatives.filter((_,i)=>i!==index)}));
+        showDetails(id);
+        if(isFullySaved())toast('Контактное лицо удалено');
+      }catch(err){button.disabled=false;toast(err.message);}
+    };
     if(!details.open)details.showModal();
   }
 
@@ -436,6 +476,11 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     };
   }
 
+  onSave(personForm,personEditor,(state,input)=>{
+    const bank=state.banks.find(item=>item.id===personBankId);
+    if(!bank)throw Error('Банк не найден.');
+    return saveBank(state,{id:bank.id,name:bank.name,representatives:[...bank.representatives,input]});
+  },'Контактное лицо добавлено',()=>showDetails(personBankId));
   onSave(bankForm,bankEditor,(state,input)=>{
     const representatives=[...representativeEditor.querySelectorAll('[data-bank-representative]')].map(row=>
       Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key])=>[key,row.querySelector(`[name="representative-${key}"]`).value])));

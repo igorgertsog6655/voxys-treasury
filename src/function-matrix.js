@@ -6,7 +6,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
   if(!section)return {render(){}};
   section.innerHTML=`
     <div class="section-heading matrix-heading">
-      <div><h2>Матрица функций казначейства</h2><p>Отметьте всех исполнителей, которые выполняют функцию. Столбцы обновляются по справочнику исполнителей.</p></div>
+      <div><h2>Матрица функций казначейства</h2><p>Отметьте всех исполнителей, которые выполняют функцию. Столбцы обновляются по составу команды.</p></div>
       <div class="matrix-heading-actions">
         <button id="new-function-section" type="button">${icon('plus')} Добавить раздел</button>
         <button id="new-treasury-function" type="button" class="primary">${icon('plus')} Добавить функцию</button>
@@ -14,7 +14,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     </div>
     <div class="registry">
       <p class="matrix-hint matrix-sort-hint">Перетащите функцию за ⋮⋮ вверх, вниз или в другой раздел.</p>
-      <p id="matrix-people-hint" class="matrix-hint" hidden>Добавьте людей в <a href="#executors">справочник исполнителей</a>, чтобы назначить им функции.</p>
+      <p id="matrix-people-hint" class="matrix-hint" hidden>Добавьте людей в раздел <a href="#executors">«Команда»</a>, чтобы назначить им функции.</p>
       <div class="table-scroll matrix-scroll" id="matrix-list"></div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend',`

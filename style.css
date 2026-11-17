@@ -53,6 +53,9 @@
 .board-card-heading{display:flex;align-items:center;justify-content:space-between}
 .board-grip{color:#7a8492;font-size:16px;line-height:1}
 .board-card-stage{display:block;font-size:11px;overflow-wrap:anywhere}
+.board-last-comment{display:block;margin-top:12px;padding-top:10px;border-top:1px solid #e7eaf0;font-size:12px}
+.board-comment-label,.board-last-comment time{display:block;color:#778395;font-size:11px;line-height:1.5}
+.board-comment-text{display:block;margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
 
 .matrix-heading{gap:12px;flex-wrap:wrap}
 .matrix-hint{padding:12px 18px;color:#626b79;font-size:12px}

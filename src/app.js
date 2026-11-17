@@ -70,6 +70,15 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
     const taskList=$('#task-list');
     const scrollLeft=taskList.querySelector('.board')?.scrollLeft||0;
     const columns=new Map(STATUSES.map(status=>[status,[]]));
+    const latestComments=new Map();
+    for(const comment of state.comments){
+      const previous=latestComments.get(comment.taskId);
+      if(!previous||Date.parse(comment.at)>=Date.parse(previous.at))latestComments.set(comment.taskId,comment);
+    }
+    const commentPreview=id=>{
+      const comment=latestComments.get(id);
+      return comment?`<span class="board-last-comment"><span class="board-comment-label">Последний комментарий</span><time datetime="${esc(comment.at)}">${formatTime(comment.at)}</time><span class="board-comment-text">${esc(comment.text)}</span></span>`:'';
+    };
     for(const task of tasks)columns.get(kanbanMoves.statusFor(task)).push(task);
     taskList.innerHTML=`<p class="board-help">Перетащите карточку в другую колонку или нажмите «Переместить».</p>
       <div class="board">${[...columns].map(([status,cards])=>`
@@ -81,6 +90,7 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
               <button type="button" class="board-card-open" data-task="${esc(t.id)}">
                 <strong>${esc(t.title)}</strong>${person(t.holder)}<span class="muted board-card-stage">${esc(t.stage||'Этап не указан')}</span>
                 <span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}${overdue(t)?' · Просрочена':''}</span>${taskMeta(t)}
+                ${commentPreview(t.id)}
               </button>
               <button type="button" class="subtle board-move" data-kanban-move="${esc(t.id)}" aria-label="Переместить задачу: ${esc(t.title)}">Переместить</button>
             </article>`).join('')||'<div class="board-empty">Нет задач</div>'}

@@ -77,7 +77,7 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
     }
     const commentPreview=id=>{
       const comment=latestComments.get(id);
-      return comment?`<span class="board-last-comment"><span class="board-comment-label">Последний комментарий</span><time datetime="${esc(comment.at)}">${formatTime(comment.at)}</time><span class="board-comment-text">${esc(comment.text)}</span></span>`:'';
+      return comment?`<span class="board-last-comment"><span class="board-comment-label">Последний комментарий</span><span class="board-comment-label">${esc(comment.author)} · <time datetime="${esc(comment.at)}" style="display:inline">${formatTime(comment.at)}</time></span><span class="board-comment-text">${esc(comment.text)}</span></span>`:'';
     };
     for(const task of tasks)columns.get(kanbanMoves.statusFor(task)).push(task);
     taskList.innerHTML=`<p class="board-help">Перетащите карточку в другую колонку или нажмите «Переместить».</p>

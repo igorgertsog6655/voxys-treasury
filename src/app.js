@@ -3,7 +3,7 @@ import {createFunctionMatrix} from './function-matrix.js?v=team-colors-1';
 import {createBanksUI} from './banks.js?v=team-colors-1';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js?v=action-icons-1';
-import {createPeopleUI} from './people.js?v=team-colors-1';
+import {createPeopleUI} from './people.js?v=team-color-menu-1';
 import {createKanbanMoves} from './kanban.js?v=move-preview-1';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';

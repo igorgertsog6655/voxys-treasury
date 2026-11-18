@@ -142,3 +142,10 @@
 .task-last-comment .board-last-comment{margin:0;padding:0;border:0}.task-last-comment .board-comment-label:first-child{display:none}
 
 .people-table td[style*="--team-color"],.matrix-table :is(th,td)[style*="--team-color"],.board-card[style*="--team-color"],.task-table tr[style*="--team-color"]>td,.bank-table tr[data-bank-row][style*="--team-color"]>td,.bank-table tr[data-bank-row][style*="--team-color"]:hover>td:first-child{background-color:var(--team-color)}
+
+@supports (appearance:base-select) and selector(::picker(select)){
+  .team-color-picker,.team-color-picker::picker(select){appearance:base-select}
+  .team-color-picker::picker(select){border:1px solid #dce1e7;border-radius:8px;max-height:min(320px,45vh);overflow:auto}
+  .team-color-picker option{padding:8px 12px}
+  .team-color-picker option:is(:hover,:focus-visible){outline:2px solid #596779;outline-offset:-2px}
+}

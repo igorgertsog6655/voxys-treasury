@@ -1,5 +1,5 @@
 import {teamColors,teamColorStyle} from './team-colors.js?v=1';
-import {createFunctionMatrix} from './function-matrix.js?v=team-colors-1';
+import {createFunctionMatrix} from './function-matrix.js?v=matrix-order-1';
 import {createBanksUI} from './banks.js?v=bank-owners-1';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js?v=action-icons-1';
@@ -7,7 +7,7 @@ import {createPeopleUI} from './people.js?v=team-color-menu-1';
 import {createKanbanMoves} from './kanban.js?v=move-preview-1';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
-import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=bank-owners-1';
+import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=matrix-order-1';
 import {icon,hydrateIcons} from './icons.js';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='voxys.treasury.v1';let state=blankState(),rawAtLoad=localStorage.getItem(KEY),conflict=false;

@@ -46,7 +46,9 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   X.utils.book_append_sheet(wb,functions,'Функции казначейства');
   X.utils.book_append_sheet(wb,sheet(state.functionSections,sectionFields,X),'Разделы функций');
   X.utils.book_append_sheet(wb,sheet(state.functionAssignments,functionAssignmentFields,X),'Назначения по функциям');
-  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',8],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']]),'Настройки');
+  const settings=[['Параметр','Значение'],['Формат','VOXYS Treasury'],['Версия',8],['Ревизия',state.revision],['Выгружено',new Date().toISOString()],['Часовой пояс','Asia/Novosibirsk']];
+  if(state.matrixPersonOrder)settings.push(['Порядок сотрудников в функциях',JSON.stringify(state.matrixPersonOrder)]);
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(settings),'Настройки');
   return wb;
 }
 export const encodeWorkbook=(state,X=globalThis.XLSX)=>X.write(toWorkbook(state,X),{bookType:'xlsx',type:'array',compression:true,cellDates:false});
@@ -73,6 +75,8 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   const meta=readRows(wb,'Настройки',{key:'Параметр',value:'Значение'},X);const get=k=>meta.find(r=>r.key===k)?.value;
   const version=Number(get('Версия'));if(get('Формат')!=='VOXYS Treasury'||![1,2,3,4,5,6,7,8].includes(version))throw Error('Откройте XLSX, созданный этим приложением (версии 1–8).');
   const s=blankState();s.revision=Number(get('Ревизия'));
+  const matrixPersonOrder=get('Порядок сотрудников в функциях');
+  if(matrixPersonOrder!==undefined&&matrixPersonOrder!=='')s.matrixPersonOrder=JSON.parse(String(matrixPersonOrder));
   if(version<8)s.schema=version===6?6:7;
   s.tasks=readRows(wb,'Задачи',taskFields,X).map(t=>{const due=readDate(t.due,X);for(const k of Object.keys(t))t[k]=String(t[k]);return {...t,due,links:[]};});
   s.history=readRows(wb,'История',histFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));

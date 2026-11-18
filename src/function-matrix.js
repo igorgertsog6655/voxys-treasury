@@ -1,5 +1,5 @@
 import {teamColors,teamColorStyle} from './team-colors.js?v=1';
-import {addFunctionSection,deleteFunctionSection,deleteTreasuryFunction,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
+import {addFunctionSection,deleteFunctionSection,deleteTreasuryFunction,matrixPeople,moveMatrixPerson,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
 import {createPinnedTableHeader} from './pinned-table-header.js';
 
 export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isFullySaved}) {
@@ -14,7 +14,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
       </div>
     </div>
     <div class="registry">
-      <p class="matrix-hint matrix-sort-hint">Перетащите функцию за ⋮⋮ вверх, вниз или в другой раздел.</p>
+      <p class="matrix-hint matrix-sort-hint">Перетащите функцию за ⋮⋮ вверх, вниз или в другой раздел. Чтобы изменить порядок сотрудников, перетащите заголовок столбца.</p>
       <p id="matrix-people-hint" class="matrix-hint" hidden>Добавьте людей в раздел <a href="#executors">«Команда»</a>, чтобы назначить им функции.</p>
       <div class="table-scroll matrix-scroll" id="matrix-list"></div>
     </div>`;
@@ -48,9 +48,11 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
   let dragged=null,dropTarget=null;
 
   function render() {
-    const {people,treasuryFunctions,functionAssignments,functionSections}=getState();
+    const state=getState();
+    const {people,treasuryFunctions,functionAssignments,functionSections}=state;
     const colorFor=teamColors(people);
-    const columns=[...people].sort((a,b)=>a.fullName.localeCompare(b.fullName,'ru'));
+    const columns=matrixPeople(state);
+    const scrollLeft=list.scrollLeft;
     const marks=new Map();
     for(const {functionId,personId} of functionAssignments){
       if(!marks.has(functionId))marks.set(functionId,new Set());
@@ -62,7 +64,9 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     list.innerHTML=functionSections.length?`
       <table class="matrix-table">
         <thead><tr><th scope="col">Функция</th>${columns.map(person=>`
-          <th scope="col"${teamColorStyle(colorFor(person.id))}><span>${esc(person.fullName)}</span><small>${esc(person.position)}${person.active?'':' · Архив'}</small></th>`).join('')}</tr></thead>
+          <th scope="col" data-matrix-column="${esc(person.id)}" draggable="true" tabindex="0"
+            title="Перетащить столбец · Alt + ← или →"${teamColorStyle(colorFor(person.id))}>
+            <span class="matrix-column-grip" aria-hidden="true">⋮⋮</span> <span>${esc(person.fullName)}</span><small>${esc(person.position)}${person.active?'':' · Архив'}</small></th>`).join('')}</tr></thead>
         ${functionSections.map(group=>{
           const rows=treasuryFunctions.filter(row=>row.sectionId===group.id);
           return `<tbody data-matrix-section="${esc(group.id)}">
@@ -94,6 +98,11 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
         }).join('')}
       </table>`:'<div class="empty"><h3>Разделов пока нет</h3><p>Добавьте раздел, затем создайте в нём функции.</p></div>';
     updatePinnedHeader(list.querySelector('.matrix-table'));
+    list.scrollLeft=scrollLeft;
+    if(focused?.matrixColumn){
+      [...list.querySelectorAll('[data-matrix-column]')].find(header=>header.dataset.matrixColumn===focused.matrixColumn)
+        ?.focus({preventScroll:true});
+    }
     if(focused?.matrixFunction){
       const checkbox=[...list.querySelectorAll('[data-matrix-function]')].find(input=>
         input.dataset.matrixFunction===focused.matrixFunction&&input.dataset.matrixPerson===focused.matrixPerson);
@@ -170,6 +179,14 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
       if(isFullySaved())toast('Функция удалена');
     }catch(err){toast(err.message);}
   });
+  async function moveColumn(id,targetId,after) {
+    if(!canEdit())return toast('Дождитесь завершения сохранения.');
+    try{
+      const state=getState();
+      const next=moveMatrixPerson(state,id,targetId,after);
+      if(next!==state)await commit(next);
+    }catch(err){toast(err.message);}
+  }
   async function move(id,sectionId,targetId,after) {
     if(!canEdit())return toast('Дождитесь завершения сохранения.');
     try{
@@ -180,29 +197,37 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
   }
 
   function clearDropTarget() {
-    dropTarget?.classList.remove('matrix-drop-before','matrix-drop-after');
+    dropTarget?.classList.remove('matrix-drop-before','matrix-drop-after','matrix-column-drop-before','matrix-column-drop-after');
     dropTarget=null;
   }
   function endDrag() {
-    dragged?.row.classList.remove('matrix-dragging');
+    dragged?.element.classList.remove('matrix-dragging');
     dragged=null;
     clearDropTarget();
   }
   function targetFor(event) {
+    if(dragged.column){
+      const element=event.target.closest('[data-matrix-column]');
+      if(!element||element===dragged.element)return null;
+      const rect=element.getBoundingClientRect();
+      return {element,targetId:element.dataset.matrixColumn,after:event.clientX>rect.left+rect.width/2};
+    }
     const row=event.target.closest('[data-matrix-row], [data-matrix-section-header]');
     const group=row?.closest('[data-matrix-section]');
-    if(!group||row===dragged.row)return null;
+    if(!group||row===dragged.element)return null;
     const rect=row.getBoundingClientRect();
-    return {row,sectionId:group.dataset.matrixSection,targetId:row.dataset.matrixRow||'',after:event.clientY>rect.top+rect.height/2};
+    return {element:row,sectionId:group.dataset.matrixSection,targetId:row.dataset.matrixRow||'',after:event.clientY>rect.top+rect.height/2};
   }
   list.addEventListener('dragstart',event=>{
     const grip=event.target.closest('[data-matrix-drag]');
-    if(!grip)return;
+    const column=event.target.closest('[data-matrix-column]');
+    if(!grip&&!column)return;
     if(!canEdit()){event.preventDefault();return;}
-    dragged={id:grip.dataset.matrixDrag,row:grip.closest('[data-matrix-row]')};
+    dragged=column?{id:column.dataset.matrixColumn,element:column,column:true}:
+      {id:grip.dataset.matrixDrag,element:grip.closest('[data-matrix-row]'),column:false};
     event.dataTransfer.effectAllowed='move';
     event.dataTransfer.setData('text/plain',dragged.id);
-    dragged.row.classList.add('matrix-dragging');
+    dragged.element.classList.add('matrix-dragging');
   });
   list.addEventListener('dragover',event=>{
     if(!dragged)return;
@@ -211,22 +236,32 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     if(!target)return;
     event.preventDefault();
     event.dataTransfer.dropEffect='move';
-    dropTarget=target.row;
-    dropTarget.classList.add(!target.targetId||target.after?'matrix-drop-after':'matrix-drop-before');
+    dropTarget=target.element;
+    const marker=dragged.column?'matrix-column-drop':'matrix-drop';
+    dropTarget.classList.add(marker+(!target.targetId||target.after?'-after':'-before'));
   });
   list.addEventListener('dragleave',event=>{
     if(!list.contains(event.relatedTarget))clearDropTarget();
   });
   list.addEventListener('drop',event=>{
     if(!dragged)return;
-    const target=targetFor(event),id=dragged.id;
+    const target=targetFor(event),{id,column}=dragged;
     endDrag();
     if(!target)return;
     event.preventDefault();
-    void move(id,target.sectionId,target.targetId,target.after);
+    if(column)void moveColumn(id,target.targetId,target.after);
+    else void move(id,target.sectionId,target.targetId,target.after);
   });
   list.addEventListener('dragend',endDrag);
   list.addEventListener('keydown',event=>{
+    const column=event.target.closest('[data-matrix-column]');
+    if(column&&event.altKey&&['ArrowLeft','ArrowRight'].includes(event.key)){
+      event.preventDefault();
+      const after=event.key==='ArrowRight';
+      const target=after?column.nextElementSibling:column.previousElementSibling;
+      if(target?.dataset.matrixColumn)void moveColumn(column.dataset.matrixColumn,target.dataset.matrixColumn,after);
+      return;
+    }
     const grip=event.target.closest('[data-matrix-drag]');
     if(!grip||!event.altKey||!['ArrowUp','ArrowDown'].includes(event.key))return;
     event.preventDefault();

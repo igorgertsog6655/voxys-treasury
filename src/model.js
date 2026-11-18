@@ -131,6 +131,10 @@ export function validateState(s) {
   return s;
 }
 function validateFunctionMatrix(state,personIds) {
+  const order=state.matrixPersonOrder;
+  if(order!==undefined&&(!Array.isArray(order)||order.length!==new Set(order).size||order.some(id=>!personIds.has(id)))) {
+    throw Error('Некорректный порядок сотрудников в матрице функций.');
+  }
   const sectionIds=new Set(),sectionNames=new Set();
   for(const section of state.functionSections){
     if(typeof section.name!=='string'||!section.name.trim()||section.name.length>120)throw Error('Укажите название раздела (до 120 символов).');
@@ -228,6 +232,27 @@ export function deleteTreasuryFunction(state,id) {
   next.revision++;
   return next;
 }
+export function matrixPeople(state) {
+  const ranks=new Map((state.matrixPersonOrder??[]).map((id,index)=>[id,index]));
+  return [...state.people].sort((a,b)=>
+    (ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity)||a.fullName.localeCompare(b.fullName,'ru'));
+}
+
+export function moveMatrixPerson(state,id,targetId,after) {
+  if(id===targetId)return state;
+  const next=validateState(state);
+  const order=matrixPeople(next).map(person=>person.id);
+  const source=order.indexOf(id);
+  if(source<0||!order.includes(targetId))throw Error('Сотрудник не найден.');
+  order.splice(source,1);
+  const destination=order.indexOf(targetId)+(after?1:0);
+  if(destination===source)return state;
+  order.splice(destination,0,id);
+  next.matrixPersonOrder=order;
+  next.revision++;
+  return next;
+}
+
 export function setFunctionAssignment(state,functionId,personId,checked) {
   const next=validateState(state);
   if(!next.treasuryFunctions.some(row=>row.id===functionId)||!next.people.some(person=>person.id===personId))throw Error('Функция или исполнитель не найдены.');

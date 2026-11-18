@@ -166,3 +166,9 @@
 .task-registry .task-table thead,.task-registry .board-heading{position:relative;z-index:2}
 .task-registry .board-heading{background:#f3f5f8;padding:6px 0}
 .task-registry .board-drop-target .board-heading{background:#fff6d8}
+
+.matrix-table [data-matrix-column]{cursor:grab;user-select:none}
+.matrix-table [data-matrix-column]:focus-visible{outline:2px solid #9a6d04;outline-offset:-2px}
+.matrix-column-grip{color:#677488;letter-spacing:-2px}
+.matrix-table .matrix-column-drop-before{box-shadow:inset 3px 0 #d5a52f}
+.matrix-table .matrix-column-drop-after{box-shadow:inset -3px 0 #d5a52f}

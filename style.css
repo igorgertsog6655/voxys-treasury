@@ -186,15 +186,39 @@
   background:#e7f4fc
 }
 .brand-garland{
-  position:absolute;left:13%;right:13%;bottom:-4px;height:10px;border-bottom:1px solid #487363;
-  border-radius:0 0 50% 50%;display:flex;align-items:flex-end;justify-content:space-around;pointer-events:none
+  position:absolute;left:9%;right:9%;bottom:-7px;height:16px;pointer-events:none
+}
+.brand-garland::before{
+  content:"";position:absolute;inset:0 1px 1px;border-bottom:2px solid #315d51;border-radius:0 0 50% 50%
 }
 .brand-garland i{
-  width:5px;height:7px;border-radius:50%;background:#fbc753;box-shadow:0 0 5px #fbc75390;transform:translateY(5px)
+  --bulb:#ffd565;
+  position:absolute;left:var(--position);top:var(--hang);width:10px;height:13px;
+  color:var(--bulb);border:1px solid #263e43;border-radius:54% 54% 48% 48%;
+  background:radial-gradient(ellipse at 30% 30%,#fff9 0 15%,transparent 19%),var(--bulb);
+  box-shadow:inset -2px -2px #30434927,0 0 2px currentColor;
+  transform:translateX(-50%) rotate(var(--tilt,0deg));
+  animation:winter-garland-blink 4.8s ease-in-out var(--pulse-delay,0s) infinite
 }
-.brand-garland i:nth-child(2n){background:#fe8c91;box-shadow:0 0 5px #fe8c9180}
-.brand-garland i:nth-child(3){background:#9de4d3;box-shadow:0 0 5px #9de4d380}
-.brand-garland i:is(:first-child,:last-child){transform:translateY(3px)}
+.brand-garland i::before{
+  content:"";position:absolute;top:-4px;left:2px;right:2px;height:4px;
+  border-radius:1px 1px 0 0;background:#315d51;border:1px solid #263e43
+}
+.brand-garland i:nth-child(1){--position:12%;--hang:12px;--tilt:18deg;--bulb:#ff777f}
+.brand-garland i:nth-child(2){--position:31%;--hang:16px;--tilt:10deg;--pulse-delay:-.9s}
+.brand-garland i:nth-child(3){--position:50%;--hang:17px;--bulb:#74e0bc;--pulse-delay:-1.8s}
+.brand-garland i:nth-child(4){--position:69%;--hang:16px;--tilt:-10deg;--bulb:#79c9ff;--pulse-delay:-2.7s}
+.brand-garland i:nth-child(5){--position:88%;--hang:12px;--tilt:-18deg;--bulb:#fca4d1;--pulse-delay:-3.6s}
+@keyframes winter-garland-blink{
+  0%,30%,100%{filter:brightness(.86);box-shadow:inset -2px -2px #30434927,0 0 2px currentColor}
+  13%,19%{filter:brightness(1.16);box-shadow:inset -2px -2px #30434927,0 0 8px 1px currentColor}
+}
+@media(max-width:760px){
+  .brand-winter{margin-bottom:8px}
+  .brand-garland i{width:8px;height:10px}
+  .brand-garland i::before{left:1px;right:1px}
+}
+@media(prefers-reduced-motion:reduce){.brand-garland i{animation:none}}
 
 .winter-snowfall{position:fixed;inset:0;z-index:11;overflow:hidden;pointer-events:none}
 .winter-snowfall i{

@@ -222,13 +222,19 @@
 
 .winter-snowfall{position:fixed;inset:0;z-index:11;overflow:hidden;pointer-events:none}
 .winter-snowfall i{
-  position:absolute;top:0;left:var(--x);width:var(--size);height:var(--size);border-radius:50%;
-  background:#f7fcff;box-shadow:0 0 2px 1px #6490b86b;
+  position:absolute;top:0;left:var(--x);width:var(--size);height:var(--size);
+  color:#f7fcff;filter:drop-shadow(0 0 1px #497da8b0);
   animation:winter-snow-fall var(--fall) linear var(--delay) infinite;
 }
+.winter-snowfall i::before,.winter-snowfall i::after,.winter-snowfall i b{
+  content:"";position:absolute;inset:0;background:currentColor;
+  clip-path:polygon(45% 0,55% 0,55% 24%,68% 10%,74% 16%,55% 36%,55% 64%,74% 84%,68% 90%,55% 76%,55% 100%,45% 100%,45% 76%,32% 90%,26% 84%,45% 64%,45% 36%,26% 16%,32% 10%,45% 24%);
+}
+.winter-snowfall i::after{transform:rotate(60deg)}
+.winter-snowfall i b{transform:rotate(-60deg)}
 @keyframes winter-snow-fall{
   0%{transform:translate3d(0,-12px,0);opacity:0}
   12%,86%{opacity:.62}
-  100%{transform:translate3d(var(--drift),100vh,0);opacity:0}
+  100%{transform:translate3d(var(--drift),100vh,0) rotate(150deg);opacity:0}
 }
 @media(prefers-reduced-motion:reduce){.winter-snowfall{display:none}}

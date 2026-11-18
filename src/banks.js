@@ -1,13 +1,14 @@
-import {addBankContact,compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
+import {compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
 import {teamColors,teamColorStyle} from './team-colors.js?v=1';
 import {createPinnedTableHeader} from './pinned-table-header.js?v=bank-scroll-1';
 
 const contactFields = [
-  ['contactedBy','Кто контактировал',180],
+  ['contactedBy','Кто контактировал'],
   ['counterparty','С кем контактировали',250],
   ['outcome','Статус / договорённости',3000],
   ['nextSteps','Дальнейшие шаги',3000]
 ];
+const ownerField=['ownerId','Основной владелец'];
 const contactColumns=[['date','Дата последнего контакта'],...contactFields.slice(0,3)];
 
 export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,formatDate,icon}) {
@@ -40,6 +41,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <div class="dialog-head"><h2 id="bank-editor-title">Новый банк</h2><button type="button" class="icon-button" data-close="bank-editor" aria-label="Закрыть">${icon('close')}</button></div>
         <div class="dialog-body">
           <label>Название банка<input name="bankName" required maxlength="180"></label>
+          <label>Основной владелец<select name="ownerId"></select></label>
           <div class="form-grid">
             <label>Стадия<input name="stage" maxlength="180"></label>
             <label>Статус обновлён<input type="date" name="statusDate"></label>
@@ -71,10 +73,15 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <div class="dialog-body">
           <label>Дата контакта<input type="date" name="date" required></label>
           <div class="form-grid">
-            <label>Кто контактировал<input name="contactedBy" list="bank-staff" required maxlength="180"></label>
+            <div class="bank-participant-field"><span id="bank-participant-label">Кто контактировал</span>
+              <details id="bank-staff" class="bank-participant-picker">
+                <summary aria-labelledby="bank-participant-label bank-staff-summary"><span id="bank-staff-summary">Выберите сотрудников</span></summary>
+                <div id="bank-staff-options"></div>
+              </details>
+              <small id="bank-staff-legacy"></small>
+            </div>
             <label>С кем контактировали<input name="counterparty" list="bank-representatives" required maxlength="250" placeholder="Имя и должность"></label>
           </div>
-          <datalist id="bank-staff"></datalist>
           <datalist id="bank-representatives"></datalist>
           <label>Статус / договорённости<textarea name="outcome" rows="4" required maxlength="3000"></textarea></label>
           <label>Дальнейшие шаги<textarea name="nextSteps" rows="3" maxlength="3000"></textarea></label>
@@ -97,7 +104,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   const viewport=document.getElementById('bank-table-viewport');
   const scrollBars=[...section.querySelectorAll('.bank-scrollbar')];
   const scrollRanges=scrollBars.map(bar=>bar.querySelector('input'));
-  let editedBankId='',contactBankId='';
+  let editedBankId='',contactBankId='',editedContactId='';
   let draft=null;
 
   function syncScrollbar() {
@@ -133,6 +140,30 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     remove?.closest('[data-bank-representative]').remove();
   });
 
+  function peopleOptions(selected=[]) {
+    return getState().people.filter(person=>person.active||selected.includes(person.id))
+      .sort((a,b)=>a.fullName.localeCompare(b.fullName,'ru'));
+  }
+  function personLabel(person) {
+    return `${person.fullName}${person.active?'':' · архив'}`;
+  }
+  function ownerOptions(id) {
+    return '<option value="">Не назначен</option>'+peopleOptions([id]).map(person=>
+      `<option value="${esc(person.id)}"${person.id===id?' selected':''}>${esc(personLabel(person))}</option>`).join('');
+  }
+  function contactPeople(contact) {
+    if(!contact.contactedByIds)return contact.contactedBy;
+    return contact.contactedByIds.map(id=>getState().people.find(person=>person.id===id)?.fullName)
+      .filter(Boolean).join('; ')||contact.contactedBy;
+  }
+  const staffOptions=document.getElementById('bank-staff-options');
+  function updateStaffSummary() {
+    const selected=[...staffOptions.querySelectorAll('input:checked')];
+    document.getElementById('bank-staff-summary').textContent=selected.length
+      ?selected.map(input=>input.dataset.name).join(', '):'Выберите сотрудников';
+  }
+  staffOptions.addEventListener('change',updateStaffSummary);
+
   function inlineActions() {
     const disabled=draft.saving?' disabled':'';
     return `<div class="bank-inline-actions">
@@ -142,13 +173,14 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   }
   function inlineInput(field,limit,name,value,description='',required=false) {
     const attributes=`name="${name}"${description?` aria-label="${description}"`:''}${required?' required':''}${draft.saving?' readonly':''}`;
+    if(field==='ownerId')return `<select ${attributes}${draft.saving?' disabled':''}>${ownerOptions(value)}</select>`;
     if(field==='date')return `<input type="date" ${attributes} value="${esc(value)}">`;
     if(limit>250)return `<textarea rows="3" maxlength="${limit}" ${attributes}>${esc(value)}</textarea>`;
     return `<input maxlength="${limit}" ${attributes} value="${esc(value)}">`;
   }
   function inlineCell(bank,[field,label,limit],{contact,fallback=''}={}) {
     const description=esc(`${label}: ${bank.name}`);
-    if(draft?.id===bank.id&&draft.field===field&&!draft.firstContact){
+    if(draft?.id===bank.id&&draft.field===field){
       return `<td><form class="bank-inline-form">
         ${inlineInput(field,limit,'value',draft.value,description,field==='name'||contactColumns.some(([key])=>key===field))}
         ${inlineActions()}
@@ -156,7 +188,9 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     }
     const isContact=contact!==undefined;
     const value=isContact?contact?.[field]:bank[field];
-    const display=field==='date'?(value?formatDate(value):'Добавить контакт'):(value||'—');
+    const displayValue=field==='ownerId'?getState().people.find(person=>person.id===value)?.fullName:
+      field==='contactedBy'&&contact?contactPeople(contact):value;
+    const display=field==='date'?(value?formatDate(value):'Добавить контакт'):(displayValue||'—');
     const editLabel=isContact&&!contact?`Добавить первый контакт: ${description}`:`Изменить поле «${description}»`;
     const edit=`<button type="button" class="bank-inline-edit${field==='name'?' bank-name-pencil':''}" data-bank-inline="${esc(bank.id)}" data-bank-field="${field}"
       data-contact-id="${esc(contact?.id||'')}" aria-label="${editLabel}" title="${editLabel}">
@@ -169,24 +203,11 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     </div></td>`;
     return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
   }
-  function firstContactRow(bank) {
-    if(draft?.id!==bank.id||!draft.firstContact)return '';
-    return `<tr class="bank-new-contact-row"><td colspan="${1+BANK_PROFILE_FIELDS.length+contactColumns.length}">
-      <form class="bank-inline-form bank-new-contact">
-        <strong>Первый контакт · ${esc(bank.name)}</strong>
-        <div class="form-grid">${contactColumns.map(([key,label,limit])=>`<label>${key==='date'?'Дата контакта':label}
-          ${inlineInput(key,limit,key,draft.values[key],'',true)}
-        </label>`).join('')}</div>
-        ${inlineActions()}
-      </form>
-    </td></tr>`;
-  }
-
   function render() {
     const activeEditor=document.activeElement?.closest('.bank-inline-form');
     const active=document.activeElement;
     const focusedName=bankList.contains(activeEditor)?active.name:'';
-    const selection=focusedName&&active.selectionStart!==null?[active.selectionStart,active.selectionEnd]:null;
+    const selection=focusedName&&typeof active.selectionStart==='number'?[active.selectionStart,active.selectionEnd]:null;
     const {banks,bankContacts,people}=getState();
     const colorFor=teamColors(people);
     const latestByBank=new Map();
@@ -196,14 +217,15 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     }
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
-        <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Банк</th>${[ownerField,...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
         <tbody>${banks.map(bank=>{
           const latest=latestByBank.get(bank.id);
-          return `<tr data-bank-row="${esc(bank.id)}"${teamColorStyle(colorFor('',latest?.contactedBy))}>
+          return `<tr data-bank-row="${esc(bank.id)}"${teamColorStyle(bank.ownerId?colorFor(bank.ownerId):'')}>
             ${inlineCell(bank,['name','Название банка',180])}
+            ${inlineCell(bank,ownerField)}
             ${BANK_PROFILE_FIELDS.map(field=>inlineCell(bank,field,{fallback:field[0]==='nextStep'?latest?.nextSteps:''})).join('')}
             ${contactColumns.map(field=>inlineCell(bank,field,{contact:latest??null})).join('')}
-          </tr>${firstContactRow(bank)}`;
+          </tr>`;
         }).join('')}</tbody>
       </table>`:`<div class="empty"><span class="module-symbol">${icon('phone')}</span><h3>Добавьте первый банк</h3><p>Откройте карточку банка, чтобы записать итоги звонка или встречи.</p></div>`;
     updatePinnedHeader(bankList.querySelector('.bank-table'));
@@ -221,8 +243,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     [...bankList.querySelectorAll('[data-bank-inline]')].find(button=>
       button.dataset.bankInline===id&&button.dataset.bankField===field)?.focus({preventScroll:true});
   }
-  const hasUnsaved=()=>Boolean(draft&&(draft.firstContact?
-    Object.keys(draft.values).some(key=>draft.values[key]!==draft.original[key]):draft.value!==draft.original));
+  const hasUnsaved=()=>Boolean(draft&&draft.value!==draft.original);
 
   let draggedRow=null,dropRow=null;
   function clearDropRow() {
@@ -305,20 +326,18 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const field=button.dataset.bankField;
     const isContact=contactColumns.some(([key])=>key===field);
     const contact=state.bankContacts.find(item=>item.id===button.dataset.contactId&&item.bankId===bank.id);
-    if(isContact&&!contact){
-      const values={date:today(),contactedBy:'',counterparty:'',outcome:''};
-      draft={id:bank.id,field,firstContact:true,original:{...values},values,saving:false};
-    }else{
-      const value=isContact?contact[field]:bank[field];
-      draft={id:bank.id,field,contactId:contact?.id,original:value,value,saving:false};
+    if(isContact&&(!contact||field==='contactedBy')){
+      if(draft)closeInline();
+      return openContactEditor(bank,contact);
     }
+    const value=isContact?contact[field]:(bank[field]??'');
+    draft={id:bank.id,field,contactId:contact?.id,original:value,value,saving:false};
     render();
-    bankList.querySelector('.bank-inline-form')?.elements[draft.firstContact?field:'value']?.focus();
+    bankList.querySelector('.bank-inline-form')?.elements.value?.focus();
   });
   bankList.addEventListener('input',event=>{
     if(!draft||!event.target.closest('.bank-inline-form'))return;
-    if(draft.firstContact)draft.values[event.target.name]=event.target.value;
-    else draft.value=event.target.value;
+    draft.value=event.target.value;
   });
   bankList.addEventListener('keydown',event=>{
     const form=event.target.closest('.bank-inline-form');
@@ -335,21 +354,18 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     try{
       const contact=state.bankContacts.find(item=>item.id===draft.contactId&&item.bankId===draft.id);
       const record=draft.contactId?contact:bank;
-      const stale=draft.firstContact?state.bankContacts.some(item=>item.bankId===draft.id):record?.[draft.field]!==draft.original;
+      const stale=!record||(record[draft.field]??'')!==draft.original;
       if(!bank||stale)return toast('Данные изменились. Скопируйте правку, отмените её и откройте актуальное значение.');
       const change={[draft.field]:draft.value};
-      let next;
-      if(draft.firstContact)next=addBankContact(state,{bankId:bank.id,...draft.values});
-      else if(contact)next=saveBankContact(state,{id:contact.id,...change});
-      else next=saveBank(state,{id:bank.id,name:bank.name,...change});
-      const message=draft.firstContact?'Контакт добавлен':'Поле сохранено';
+      const next=contact?saveBankContact(state,{id:contact.id,...change}):
+        saveBank(state,{id:bank.id,name:bank.name,...change});
       if(next!==state){
         draft.saving=true;
         render();
         await commit(next);
       }
       closeInline();
-      if(next!==state&&isFullySaved())toast(message);
+      if(next!==state&&isFullySaved())toast('Поле сохранено');
     }catch(err){
       draft.saving=false;
       render();
@@ -377,6 +393,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
           </div>
         </div>
         <dl class="detail-grid bank-profile">
+          <div><dt>Основной владелец</dt><dd>${esc(getState().people.find(person=>person.id===bank.ownerId)?.fullName||'—')}</dd></div>
           ${BANK_PROFILE_FIELDS.map(([key,label])=>`<div><dt>${label}</dt><dd>${esc(bank[key]||'—')}</dd></div>`).join('')}
           <div><dt>Статус обновлён</dt><dd>${bank.statusDate?formatDate(bank.statusDate):'—'}</dd></div>
         </dl>
@@ -395,8 +412,8 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <h3>История контактов <span class="muted">(${history.length})</span></h3>
         ${history.map(contact=>`
           <article class="comment bank-contact">
-            <div class="comment-header"><strong><time datetime="${esc(contact.date)}">${formatDate(contact.date)}</time></strong></div>
-            <dl class="detail-grid">${contactFields.map(([key,label])=>`<div><dt>${label}</dt><dd>${esc(contact[key]||'—')}</dd></div>`).join('')}</dl>
+            <div class="comment-header"><strong><time datetime="${esc(contact.date)}">${formatDate(contact.date)}</time></strong><button type="button" class="icon-button action-icon" data-edit-bank-contact="${esc(contact.id)}" title="Редактировать контакт" aria-label="Редактировать контакт от ${esc(formatDate(contact.date))}">${icon('edit')}</button></div>
+            <dl class="detail-grid">${contactFields.map(([key,label])=>`<div><dt>${label}</dt><dd>${esc((key==='contactedBy'?contactPeople(contact):contact[key])||'—')}</dd></div>`).join('')}</dl>
           </article>`).join('')||'<p class="muted">Контактов пока нет. Добавьте первую запись после звонка или встречи.</p>'}
       </div>`;
     document.getElementById('rename-bank').onclick=()=>openBankEditor(bank);
@@ -423,6 +440,10 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         if(isFullySaved())toast('Контактное лицо удалено');
       }catch(err){button.disabled=false;toast(err.message);}
     };
+    for(const button of details.querySelectorAll('[data-edit-bank-contact]'))button.onclick=()=>{
+      const contact=getState().bankContacts.find(item=>item.id===button.dataset.editBankContact);
+      if(contact)openContactEditor(bank,contact);
+    };
     if(!details.open)details.showModal();
   }
 
@@ -431,6 +452,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     editedBankId=bank?.id||'';
     document.getElementById('bank-editor-title').textContent=bank?'Редактировать банк':'Новый банк';
     bankForm.elements.bankName.value=bank?.name||'';
+    bankForm.elements.ownerId.innerHTML=ownerOptions(bank?.ownerId);
     for(const key of [...BANK_PROFILE_FIELDS.map(([key])=>key),'statusDate'])bankForm.elements[key].value=bank?.[key]||'';
     representativeEditor.replaceChildren();
     for(const person of bank?.representatives||[])addRepresentative(person);
@@ -438,14 +460,24 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     bankEditor.showModal();
   }
 
-  function openContactEditor(bank) {
+  function openContactEditor(bank,contact) {
     if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте статус сохранения.');
     contactBankId=bank.id;
+    editedContactId=contact?.id||'';
     contactForm.reset();
-    contactForm.elements.date.value=today();
+    document.getElementById('bank-contact-title').textContent=contact?'Редактировать контакт':'Новый контакт';
+    contactForm.elements.date.value=contact?.date||today();
+    for(const key of ['counterparty','outcome','nextSteps'])contactForm.elements[key].value=contact?.[key]||'';
     document.getElementById('contact-bank-name').textContent=bank.name;
-    document.getElementById('bank-staff').innerHTML=getState().people.filter(person=>person.active)
-      .map(person=>`<option value="${esc(person.fullName)}"></option>`).join('');
+    const legacyMatches=peopleOptions().filter(person=>person.fullName===contact?.contactedBy);
+    const selected=contact?.contactedByIds??(legacyMatches.length===1?[legacyMatches[0].id]:[]);
+    staffOptions.innerHTML=peopleOptions(selected).map(person=>
+      `<label><input type="checkbox" name="contactedByIds" value="${esc(person.id)}" data-name="${esc(person.fullName)}"${selected.includes(person.id)?' checked':''}> ${esc(personLabel(person))}</label>`).join('')
+      ||'<p>В «Команде» пока нет активных сотрудников.</p>';
+    document.getElementById('bank-staff').open=false;
+    document.getElementById('bank-staff-legacy').textContent=contact&&!contact.contactedByIds
+      ?`В прежней записи: ${contact.contactedBy}`:'';
+    updateStaffSummary();
     document.getElementById('bank-representatives').innerHTML=bank.representatives
       .map(person=>`<option value="${esc(person.name)}"></option>`).join('');
     contactForm.querySelector('.form-error').textContent='';
@@ -487,12 +519,22 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const representatives=[...representativeEditor.querySelectorAll('[data-bank-representative]')].map(row=>
       Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key])=>[key,row.querySelector(`[name="representative-${key}"]`).value])));
     const profile=Object.fromEntries(BANK_PROFILE_FIELDS.map(([key])=>[key,input[key]]));
-    return saveBank(state,{id:editedBankId,name:input.bankName,...profile,statusDate:input.statusDate,representatives});
+    return saveBank(state,{id:editedBankId,name:input.bankName,...profile,statusDate:input.statusDate,ownerId:input.ownerId,representatives});
   },'Банк сохранён',()=>{
     if(editedBankId)showDetails(editedBankId);
   });
-  onSave(contactForm,contactEditor,(state,input)=>addBankContact(state,{...input,bankId:contactBankId}),'Контакт сохранён',()=>{
-    showDetails(contactBankId);
+  onSave(contactForm,contactEditor,(state,input)=>{
+    const contactedByIds=new FormData(contactForm).getAll('contactedByIds');
+    const legacy=state.bankContacts.find(item=>item.id===editedContactId);
+    if(!contactedByIds.length&&(!legacy||legacy.contactedByIds)){
+      document.getElementById('bank-staff').open=true;
+      staffOptions.querySelector('input')?.focus();
+      throw Error('Выберите одного или нескольких сотрудников.');
+    }
+    return saveBankContact(state,{...input,id:editedContactId,bankId:contactBankId,
+      contactedByIds:contactedByIds.length?contactedByIds:undefined});
+  },'Контакт сохранён',()=>{
+    if(details.open)showDetails(contactBankId);
   });
   document.getElementById('new-bank').onclick=()=>openBankEditor();
   section.addEventListener('click',event=>{

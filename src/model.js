@@ -115,6 +115,7 @@ export function validateState(s) {
   const bankIds=new Set(),bankNames=new Set(),contactIds=new Set();
   for(const bank of s.banks){
     validateBank(bank);
+    if(bank.ownerId!==undefined&&!personIds.has(bank.ownerId))throw Error('У банка указан неизвестный основной владелец.');
     const name=bank.name.trim().toLocaleLowerCase('ru');
     if(typeof bank.id!=='string'||!bank.id||bankIds.has(bank.id)||bankNames.has(name))throw Error('Повторяется название или ID банка.');
     bankIds.add(bank.id);
@@ -123,6 +124,7 @@ export function validateState(s) {
   for(const contact of s.bankContacts){
     if(typeof contact.id!=='string'||!contact.id||contactIds.has(contact.id)||!bankIds.has(contact.bankId))throw Error('В истории контактов указан неизвестный банк или повторяется ID записи.');
     validateBankContact(contact);
+    if(contact.contactedByIds!==undefined)validateContactParticipants(contact.contactedByIds,personIds);
     contactIds.add(contact.id);
   }
   validateFunctionMatrix(s,personIds);
@@ -261,13 +263,18 @@ function validateBankContact(contact) {
   if(!isDate(contact.date))throw Error('Укажите корректную дату контакта.');
   if(!Number.isFinite(Date.parse(contact.createdAt)))throw Error('Некорректная дата записи контакта.');
   for(const [key,label,limit,required] of [
-    ['contactedBy','Кто контактировал',180,true],
+    ['contactedBy','Кто контактировал',3000,true],
     ['counterparty','С кем контактировали',250,true],
     ['outcome','Статус / договорённости',3000,true],
     ['nextSteps','Дальнейшие шаги',3000,false]
   ]){
     const value=contact[key];
     if(typeof value!=='string'||(required&&!value.trim())||value.length>limit)throw Error(`Проверьте поле «${label}» (до ${limit} символов).`);
+  }
+}
+function validateContactParticipants(ids,personIds) {
+  if(!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length||ids.some(id=>!personIds.has(id))) {
+    throw Error('Выберите одного или нескольких сотрудников из команды.');
   }
 }
 export function saveBank(state,input) {
@@ -280,6 +287,12 @@ export function saveBank(state,input) {
   bank.statusDate=input.statusDate??previous?.statusDate??'';
   bank.representatives=(input.representatives??previous?.representatives??[]).map(person=>
     Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key])=>[key,(person[key]??'').trim()])));
+  const ownerId=input.ownerId??previous?.ownerId;
+  if(ownerId){
+    const owner=next.people.find(person=>person.id===ownerId);
+    if(!owner||(ownerId!==previous?.ownerId&&!owner.active))throw Error('Выберите основного владельца из команды.');
+    bank.ownerId=ownerId;
+  }
   validateBank(bank);
   if(next.banks.some(item=>item.id!==bank.id&&item.name.trim().toLocaleLowerCase('ru')===bank.name.toLocaleLowerCase('ru')))throw Error('Банк с таким названием уже есть.');
   if(previous){
@@ -319,6 +332,16 @@ export function saveBankContact(state,input) {
     nextSteps:(input.nextSteps??previous?.nextSteps??'').trim(),
     createdAt:previous?.createdAt??new Date().toISOString()
   };
+  const participantIds=input.contactedByIds??previous?.contactedByIds;
+  if(participantIds!==undefined){
+    const peopleById=new Map(next.people.map(person=>[person.id,person]));
+    validateContactParticipants(participantIds,peopleById);
+    if(participantIds.some(id=>!peopleById.get(id).active&&!previous?.contactedByIds?.includes(id))) {
+      throw Error('Архивного сотрудника нельзя добавить в контакт.');
+    }
+    contact.contactedByIds=[...participantIds];
+    if(input.contactedByIds!==undefined)contact.contactedBy=participantIds.map(id=>peopleById.get(id).fullName).join('; ');
+  }
   validateBankContact(contact);
   if(previous){
     if(JSON.stringify(contact)===JSON.stringify(previous))return state;

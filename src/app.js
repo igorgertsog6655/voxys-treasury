@@ -12,7 +12,7 @@ const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=
 const KEY='voxys.treasury.v1';let state=blankState(),rawAtLoad=localStorage.getItem(KEY),conflict=false;
 try{if(rawAtLoad)state=validateState(JSON.parse(rawAtLoad));}catch(e){conflict=true;setTimeout(()=>toast('Не удалось прочитать сохранённые данные. Не очищайте браузер: сохраните резервную копию через инструменты браузера.'),200);}
 let sortMode=localStorage.getItem('voxys.taskSort')||'manual';
-let showQuestions=localStorage.getItem('voxys.showTaskQuestions')==='true';
+let showLastComment=localStorage.getItem('voxys.showTaskLastComment')==='true';
 let view='table',handle=null,baseline=null,syncedRevision=-1,copyRevision=-1,busy=false,selectedId=null,toastTimer;
 let remoteStore=null,remoteRevision=-1,remoteError='',githubConnectionIssue='',githubUI=null;
 const formatDate=s=>s?new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(s+'T12:00:00Z')):'Уточнить';
@@ -65,11 +65,7 @@ async function commit(next){
 function filteredTasks(){const q=$('#search').value.toLocaleLowerCase('ru'),status=$('#filter-status').value,owner=$('#filter-owner').value,due=$('#filter-due').value;const week=new Date(today()+'T12:00:00Z');week.setUTCDate(week.getUTCDate()+6);const end=week.toISOString().slice(0,10);return state.tasks.filter(t=>(!q||[t.title,t.description,t.questions,t.stage,t.nextStep,t.owner,t.holder].join(' ').toLocaleLowerCase('ru').includes(q))&&(!status||t.status===status)&&(!owner||t.owner===owner)&&(!due||(due==='overdue'?overdue(t):t.status!=='Завершена'&&t.due>=today()&&t.due<=end))).sort(sortMode==='manual'?(a,b)=>a.sortOrder-b.sortOrder:(a,b)=>(a.status==='Завершена')-(b.status==='Завершена')||(a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')||a.createdAt.localeCompare(b.createdAt));}
 function renderStats(){const defs=[['Всего задач',state.tasks.length,'tasks','all','В реестре',''],['Бэклог',state.tasks.filter(t=>t.status==='Бэклог').length,'list','Бэклог','Запланированы',''],['В работе',state.tasks.filter(t=>t.status==='В работе').length,'clock','В работе','На исполнении','work'],['Завершены',state.tasks.filter(t=>t.status==='Завершена').length,'check','Завершена','Результат зафиксирован','done'],['Просрочены',state.tasks.filter(overdue).length,'alert','late','Требуют внимания','late']];$('#stats').innerHTML=defs.map(([label,n,i,key,hint,cls])=>`<button class="stat ${cls} ${($('#filter-status').value===key||(key==='late'&&$('#filter-due').value==='overdue'))?'selected':''}" data-stat="${key}"><span class="stat-top">${label}<span class="stat-symbol">${icon(i)}</span></span><span class="number">${n}</span><span class="hint">${hint}</span></button>`).join('');}
 function taskMeta(t){const count=state.comments.filter(c=>c.taskId===t.id).length;return `<span class="task-meta"><span><i class="priority-dot ${t.priority==='Высокий'?'high':''}"></i>${esc(t.priority)}</span>${count?`<span>${count} комм.</span>`:''}${t.links.length?`<span>${t.links.length} ссыл.</span>`:''}</span>`;}
-function renderList(){$('#show-task-questions').closest('label').hidden=view!=='table';const tasks=filteredTasks();$('#record-count').textContent=`Показано ${tasks.length} из ${state.tasks.length}`;if(!tasks.length){$('#task-list').innerHTML=`<div class="empty"><div class="empty-icon">${icon(state.tasks.length?'search':'tasks')}</div><h3>${state.tasks.length?'Задачи не найдены':'В этом браузере задачи ещё не загружены'}</h3><p>${state.tasks.length?'Попробуйте изменить запрос или сбросить фильтры.':'Подключите рабочий XLSX на GitHub — задачи будут загружаться автоматически. Для первоначального переноса можно открыть локальный XLSX.'}</p><button class="${state.tasks.length?'':'primary'}" id="empty-action">${icon(state.tasks.length?'reset':'plus')}${state.tasks.length?'Сбросить фильтры':'Загрузить задачи'}</button></div>`;$('#empty-action').onclick=()=>state.tasks.length?resetFilters():$('#github-connect').click();return;}
-  if(view==='board'){
-    const taskList=$('#task-list');
-    const scrollLeft=taskList.querySelector('.board')?.scrollLeft||0;
-    const columns=new Map(STATUSES.map(status=>[status,[]]));
+function renderList(){$('#show-task-last-comment').closest('label').hidden=view!=='table';const tasks=filteredTasks();$('#record-count').textContent=`Показано ${tasks.length} из ${state.tasks.length}`;if(!tasks.length){$('#task-list').innerHTML=`<div class="empty"><div class="empty-icon">${icon(state.tasks.length?'search':'tasks')}</div><h3>${state.tasks.length?'Задачи не найдены':'В этом браузере задачи ещё не загружены'}</h3><p>${state.tasks.length?'Попробуйте изменить запрос или сбросить фильтры.':'Подключите рабочий XLSX на GitHub — задачи будут загружаться автоматически. Для первоначального переноса можно открыть локальный XLSX.'}</p><button class="${state.tasks.length?'':'primary'}" id="empty-action">${icon(state.tasks.length?'reset':'plus')}${state.tasks.length?'Сбросить фильтры':'Загрузить задачи'}</button></div>`;$('#empty-action').onclick=()=>state.tasks.length?resetFilters():$('#github-connect').click();return;}
     const latestComments=new Map();
     for(const comment of state.comments){
       const previous=latestComments.get(comment.taskId);
@@ -79,6 +75,10 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
       const comment=latestComments.get(id);
       return comment?`<span class="board-last-comment"><span class="board-comment-label">Последний комментарий</span><span class="board-comment-label">${esc(comment.author)} · <time datetime="${esc(comment.at)}" style="display:inline">${formatTime(comment.at)}</time></span><span class="board-comment-text">${esc(comment.text)}</span></span>`:'';
     };
+  if(view==='board'){
+    const taskList=$('#task-list');
+    const scrollLeft=taskList.querySelector('.board')?.scrollLeft||0;
+    const columns=new Map(STATUSES.map(status=>[status,[]]));
     for(const task of tasks)columns.get(kanbanMoves.statusFor(task)).push(task);
     taskList.innerHTML=`<p class="board-help">Перетащите карточку в другую колонку или нажмите «Переместить».</p>
       <div class="board">${[...columns].map(([status,cards])=>`
@@ -98,7 +98,7 @@ function renderList(){$('#show-task-questions').closest('label').hidden=view!=='
     taskList.querySelector('.board').scrollLeft=scrollLeft;
     return;
   }
-  $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showQuestions?'has-questions':''}"><thead><tr><th>Задача</th>${showQuestions?'<th>Вопросы для уточнения</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showQuestions?inlineQuestions.cell(t):''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
+  $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showLastComment?'has-last-comment':''}"><thead><tr><th>Задача</th>${showLastComment?'<th>Последний комментарий</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showLastComment?`<td class="task-last-comment">${commentPreview(t.id)||'<span class="muted">Комментариев пока нет</span>'}</td>`:''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderNavigationCounts() {
   const counts={
@@ -145,8 +145,8 @@ const peopleUI=createPeopleUI({getState:()=>state,commit,toast,canEdit:()=>!busy
 githubUI=createGitHubUI({getState:()=>state,encode:encodeWorkbook,decode:decodeWorkbook,replaceLocal:commitImport,setRemote:store=>{remoteStore=store;remoteRevision=store?state.revision:-1;remoteError='';githubConnectionIssue='';handle=null;baseline=null;},canEdit:()=>!busy&&!conflict,toast,refresh:(error='')=>{if(error)githubConnectionIssue=error;render();if(error)fileStatus(error);},hasUnsynced:()=>localStorage.getItem('voxys.github.dirty')==='1'});
 $('#sidebar-sync-refresh')?.addEventListener('click',()=>githubUI.refreshFromGitHub());
 $('#sidebar-sync-connect')?.addEventListener('click',()=>githubUI.open());
-$('#show-task-questions').checked=showQuestions;
-$('#show-task-questions').onchange=e=>{showQuestions=e.target.checked;localStorage.setItem('voxys.showTaskQuestions',String(showQuestions));renderList();};
+$('#show-task-last-comment').checked=showLastComment;
+$('#show-task-last-comment').onchange=e=>{showLastComment=e.target.checked;localStorage.setItem('voxys.showTaskLastComment',String(showLastComment));renderList();};
 $('#task-sort').value=sortMode;
 $('#task-sort').onchange=e=>{sortMode=e.target.value;localStorage.setItem('voxys.taskSort',sortMode);renderList();};
 const kanbanMoves=createKanbanMoves({

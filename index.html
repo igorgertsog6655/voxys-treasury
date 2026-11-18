@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#20252b">
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
-  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=bank-owners-1">
+  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=user-guide-1">
   <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=bank-owners-1","./src/icons.js":"./src/icons.js?v=action-icons-1"}}</script>
   <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=bank-owners-1"></script>
 </head>
@@ -21,6 +21,7 @@
       <a class="nav-item" href="#function-matrix" data-section-label="Функции"><span data-icon="grid"></span> Функции <b id="nav-functions-count">—</b></a>
       <a class="nav-item" href="#banks" data-section-label="Банки"><span data-icon="phone"></span> Банки <b id="nav-banks-count">—</b></a>
       <a class="nav-item" href="#modules" data-section-label="Другие блоки"><span data-icon="grid"></span> Другие блоки <b>0</b></a>
+      <a class="nav-item" href="#user-guide" data-section-label="Инструкция пользователя"><span data-icon="file"></span> Инструкция пользователя</a>
     </nav>
     <div class="sidebar-sync" id="sidebar-sync" hidden>
       <span id="sidebar-sync-status" role="status"></span>
@@ -48,6 +49,51 @@
       <section class="modules" id="function-matrix" data-workspace-section hidden aria-label="Матрица функций казначейства"></section>
       <section class="modules" id="banks" data-workspace-section hidden aria-label="Работа с банками"></section>
       <section class="modules" id="modules" data-workspace-section hidden><div class="section-heading"><div><h2>Другие направления</h2><p>Отдельные блоки с собственной структурой учёта.</p></div><span class="soon">СЛЕДУЮЩИЙ ЭТАП</span></div><div class="module-grid"><article><span class="module-symbol" data-icon="file"></span><h3>Подготовка отчётов</h3><p>Периодичность, сбор данных и согласование отчётности.</p><span class="module-future">Запланировано</span></article><article class="module-placeholder"><span class="module-symbol" data-icon="plus"></span><h3>Новые направления</h3><p>Рабочее пространство будет расширяться по мере задач.</p><span class="module-future">Структуру определим отдельно</span></article></div></section>
+      <section class="modules" id="user-guide" data-workspace-section hidden aria-labelledby="user-guide-title">
+        <div class="section-heading"><h1 id="user-guide-title">Инструкция пользователя</h1></div>
+        <div class="user-guide-grid">
+          <article class="registry user-guide-card user-guide-storage">
+            <h2>Подключение и сохранение</h2>
+            <ul>
+              <li>Откройте «Реестр задач» → «GitHub XLSX». Оставьте предложенные репозиторий и имя файла, введите токен с правом чтения и записи файлов в закрытом репозитории и нажмите «Подключить».</li>
+              <li>После подключения изменения сохраняются автоматически. Чтобы загрузить свежие данные, нажмите «Обновить с GitHub». Если есть несохранённые правки, сначала нажмите «Скачать XLSX» и сохраните копию.</li>
+              <li>Без подключения к GitHub записи остаются в этом браузере. «Открыть XLSX» загружает данные из файла, а «Подключить XLSX» включает автосохранение в локальный файл, если браузер это поддерживает.</li>
+            </ul>
+          </article>
+          <article class="registry user-guide-card">
+            <h2>Реестр задач</h2>
+            <ul>
+              <li>Нажмите «Новая задача». Введите название, укажите основного ответственного и того, у кого задача сейчас. Добавьте срок, статус и следующий шаг, если они известны.</li>
+              <li>Нажмите название задачи, чтобы оставить комментарий или открыть историю. Карандаш открывает редактирование полей, включая вопросы для уточнения и ссылки на результат.</li>
+              <li>В «Списке» используйте поиск, фильтры и галочки «Показывать последний комментарий» и «Убрать завершённые». В режиме «Мой порядок» перетаскивайте строки за ⋮⋮.</li>
+              <li>В «Канбане» перетащите карточку или нажмите «Переместить». Укажите статус, исполнителя и комментарий к переходу.</li>
+            </ul>
+          </article>
+          <article class="registry user-guide-card">
+            <h2>Команда</h2>
+            <ul>
+              <li>Нажмите «Добавить в команду» и заполните ФИО, почту и должность. Сотрудник появится в списках назначения.</li>
+              <li>Через карандаш можно изменить данные и выбрать пастельный цвет. Он используется в задачах, столбце сотрудника в «Функциях» и строках банков, которыми он владеет.</li>
+              <li>Нажмите «В архив», чтобы убрать сотрудника из новых назначений. Чтобы вернуть его, включите «Показывать архивных».</li>
+            </ul>
+          </article>
+          <article class="registry user-guide-card">
+            <h2>Функции</h2>
+            <ul>
+              <li>Добавьте раздел или функцию кнопками над таблицей. Галочка на пересечении функции и сотрудника закрепляет функцию за ним. Функции без исполнителей выделены красным.</li>
+              <li>Перетащите функцию за ⋮⋮, чтобы изменить порядок или перенести её в другой раздел. Пустой раздел можно удалить корзиной.</li>
+            </ul>
+          </article>
+          <article class="registry user-guide-card">
+            <h2>Банки</h2>
+            <ul>
+              <li>Нажмите «Добавить банк» и выберите одного «Основного владельца». Его цвет определяет фон строки. Поля реестра открываются для правки карандашом.</li>
+              <li>Нажмите название банка, затем «Добавить контакт». В поле «Кто контактировал» отметьте одного или нескольких сотрудников. Запишите, с кем общались, о чём договорились и что делать дальше.</li>
+              <li>В карточке банка отдельно ведутся история общения и список контактных лиц. Чтобы изменить порядок банков, перетаскивайте строки за ⋮⋮.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
       <footer><span>© Igor Gertsog, 2026</span><span>VOXYS · Казначейство</span></footer>
     </main>
   </div>

@@ -3,6 +3,7 @@ const taskFields={id:'ID задачи',title:'Задача',due:'Срок',owner
 const histFields={id:'ID записи',taskId:'ID задачи',at:'Дата и время',author:'Автор',field:'Поле',before:'Было',after:'Стало'};
 const commentFields={id:'ID комментария',taskId:'ID задачи',at:'Дата и время',author:'Автор',text:'Комментарий'};
 const personFields={id:'ID исполнителя',fullName:'ФИО',email:'Электронный адрес',position:'Должность',active:'Активен'};
+const optionalPersonFields={color:'Цвет'};
 const assignmentFields={ownerId:'ID ответственного',holderId:'ID текущего исполнителя'};
 const questionFields={questions:'Вопросы для уточнения'};
 const orderFields={sortOrder:'Порядок приоритета'};
@@ -30,7 +31,7 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   X.utils.book_append_sheet(wb,sheet(state.comments,commentFields,X),'Комментарии');
   const links=state.tasks.flatMap(t=>t.links.map(url=>({taskId:t.id,url})));
   X.utils.book_append_sheet(wb,sheet(links,{taskId:'ID задачи',url:'Ссылка'},X),'Результаты');
-  X.utils.book_append_sheet(wb,sheet(state.people.map(p=>({...p,active:p.active?'Да':'Нет'})),personFields,X),'Исполнители');
+  X.utils.book_append_sheet(wb,sheet(state.people.map(p=>({...p,active:p.active?'Да':'Нет'})),{...personFields,...optionalPersonFields},X),'Исполнители');
   X.utils.book_append_sheet(wb,sheet(state.banks,{...bankFields,...bankProfileFields},X),'Банки');
   const representatives=state.banks.flatMap(bank=>bank.representatives.map(person=>({bankId:bank.id,...person})));
   X.utils.book_append_sheet(wb,sheet(representatives,bankRepresentativeFields,X),'Контактные лица банков');
@@ -47,11 +48,11 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   return wb;
 }
 export const encodeWorkbook=(state,X=globalThis.XLSX)=>X.write(toWorkbook(state,X),{bookType:'xlsx',type:'array',compression:true,cellDates:false});
-function readRows(wb,name,fields,X) {
+function readRows(wb,name,fields,X,optionalFields={}) {
   const ws=wb.Sheets[name];if(!ws)throw Error(`В XLSX отсутствует лист «${name}».`);
   const rows=X.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});const header=rows.shift()||[];
   if(Object.values(fields).some(h=>!header.includes(h)))throw Error(`Изменены обязательные заголовки листа «${name}».`);
-  return rows.filter(row=>row.some(x=>x!=='')).map(row=>Object.fromEntries(Object.entries(fields).map(([k,h])=>[k,row[header.indexOf(h)]??''])));
+  return rows.filter(row=>row.some(x=>x!=='')).map(row=>Object.fromEntries(Object.entries({...fields,...optionalFields}).map(([k,h])=>[k,row[header.indexOf(h)]??''])));
 }
 function readDate(value,X) {
   if(value instanceof Date)return value.toISOString().slice(0,10);
@@ -74,7 +75,7 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   s.tasks=readRows(wb,'Задачи',taskFields,X).map(t=>{const due=readDate(t.due,X);for(const k of Object.keys(t))t[k]=String(t[k]);return {...t,due,links:[]};});
   s.history=readRows(wb,'История',histFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));
   s.comments=readRows(wb,'Комментарии',commentFields,X).map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[k,v instanceof Date?v.toISOString():String(v)])));
-  if(version>=2){s.people=readRows(wb,'Исполнители',personFields,X).map(p=>{if(!['Да','Нет'].includes(p.active))throw Error('В поле «Активен» укажите Да или Нет.');return {id:String(p.id),fullName:String(p.fullName),email:String(p.email),position:String(p.position),active:p.active==='Да'};});const assignments=readRows(wb,'Задачи',{id:'ID задачи',...assignmentFields},X);for(let i=0;i<s.tasks.length;i++){s.tasks[i].ownerId=String(assignments[i].ownerId);s.tasks[i].holderId=String(assignments[i].holderId);}}
+  if(version>=2){s.people=readRows(wb,'Исполнители',personFields,X,optionalPersonFields).map(p=>{if(!['Да','Нет'].includes(p.active))throw Error('В поле «Активен» укажите Да или Нет.');return {id:String(p.id),fullName:String(p.fullName),email:String(p.email),position:String(p.position),active:p.active==='Да',...(p.color!==''?{color:String(p.color)}:{})};});const assignments=readRows(wb,'Задачи',{id:'ID задачи',...assignmentFields},X);for(let i=0;i<s.tasks.length;i++){s.tasks[i].ownerId=String(assignments[i].ownerId);s.tasks[i].holderId=String(assignments[i].holderId);}}
   if(version>=3){const questions=readRows(wb,'Задачи',questionFields,X);for(let i=0;i<s.tasks.length;i++)s.tasks[i].questions=String(questions[i].questions);}
   if(version>=4){const order=readRows(wb,'Задачи',orderFields,X);for(let i=0;i<s.tasks.length;i++){if(order[i].sortOrder==='')throw Error('Не указан порядок задачи.');s.tasks[i].sortOrder=Number(order[i].sortOrder);}}
   if(version>=5){

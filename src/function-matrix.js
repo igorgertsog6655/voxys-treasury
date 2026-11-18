@@ -1,3 +1,4 @@
+import {teamColors,teamColorStyle} from './team-colors.js?v=1';
 import {addFunctionSection,deleteFunctionSection,deleteTreasuryFunction,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
 import {createPinnedTableHeader} from './pinned-table-header.js';
 
@@ -48,6 +49,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
 
   function render() {
     const {people,treasuryFunctions,functionAssignments,functionSections}=getState();
+    const colorFor=teamColors(people);
     const columns=[...people].sort((a,b)=>a.fullName.localeCompare(b.fullName,'ru'));
     const marks=new Map();
     for(const {functionId,personId} of functionAssignments){
@@ -60,7 +62,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     list.innerHTML=functionSections.length?`
       <table class="matrix-table">
         <thead><tr><th scope="col">Функция</th>${columns.map(person=>`
-          <th scope="col"><span>${esc(person.fullName)}</span><small>${esc(person.position)}${person.active?'':' · Архив'}</small></th>`).join('')}</tr></thead>
+          <th scope="col"${teamColorStyle(colorFor(person.id))}><span>${esc(person.fullName)}</span><small>${esc(person.position)}${person.active?'':' · Архив'}</small></th>`).join('')}</tr></thead>
         ${functionSections.map(group=>{
           const rows=treasuryFunctions.filter(row=>row.sectionId===group.id);
           return `<tbody data-matrix-section="${esc(group.id)}">
@@ -86,7 +88,7 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
               </div>
             </div></th>
             ${columns.map(person=>`
-              <td><input type="checkbox" data-matrix-function="${esc(row.id)}" data-matrix-person="${esc(person.id)}"
+              <td${teamColorStyle(colorFor(person.id))}><input type="checkbox" data-matrix-function="${esc(row.id)}" data-matrix-person="${esc(person.id)}"
                 aria-label="${esc(row.name)} — ${esc(person.fullName)}"${marks.get(row.id)?.has(person.id)?' checked':''}></td>`).join('')}
           </tr>`).join('')}</tbody>`;
         }).join('')}

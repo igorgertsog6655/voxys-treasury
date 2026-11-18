@@ -140,3 +140,5 @@
 .bank-table .bank-drop-after>td{box-shadow:inset 0 -3px #d5a52f}
 
 .task-last-comment .board-last-comment{margin:0;padding:0;border:0}.task-last-comment .board-comment-label:first-child{display:none}
+
+.people-table td[style*="--team-color"],.matrix-table :is(th,td)[style*="--team-color"],.board-card[style*="--team-color"],.task-table tr[style*="--team-color"]>td,.bank-table tr[data-bank-row][style*="--team-color"]>td,.bank-table tr[data-bank-row][style*="--team-color"]:hover>td:first-child{background-color:var(--team-color)}

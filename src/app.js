@@ -1,12 +1,13 @@
-import {createFunctionMatrix} from './function-matrix.js?v=team-1';
-import {createBanksUI} from './banks.js?v=bank-people-1';
+import {teamColors,teamColorStyle} from './team-colors.js?v=1';
+import {createFunctionMatrix} from './function-matrix.js?v=team-colors-1';
+import {createBanksUI} from './banks.js?v=team-colors-1';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js?v=action-icons-1';
-import {createPeopleUI} from './people.js?v=team-1';
+import {createPeopleUI} from './people.js?v=team-colors-1';
 import {createKanbanMoves} from './kanban.js?v=move-preview-1';
 import {createGitHubUI} from './github-ui.js?v=1';
 import {STATUSES,FIELDS,blankState,validateState,hasRecords,saveTask,addComment,today,overdue,safeLink} from './model.js';
-import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=banks-2';
+import {encodeWorkbook,decodeWorkbook} from './workbook.js?v=team-colors-1';
 import {icon,hydrateIcons} from './icons.js';
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='voxys.treasury.v1';let state=blankState(),rawAtLoad=localStorage.getItem(KEY),conflict=false;
@@ -77,6 +78,12 @@ function renderList(){
       const previous=latestComments.get(comment.taskId);
       if(!previous||Date.parse(comment.at)>=Date.parse(previous.at))latestComments.set(comment.taskId,comment);
     }
+    const colorFor=teamColors(state.people);
+    const taskColorStyle=task=>{
+      const holder=colorFor(task.holderId,task.holder);
+      const owner=colorFor(task.ownerId,task.owner);
+      return teamColorStyle(latestComments.has(task.id)?holder||owner:owner||holder);
+    };
     const commentPreview=id=>{
       const comment=latestComments.get(id);
       return comment?`<span class="board-last-comment"><span class="board-comment-label">Последний комментарий</span><span class="board-comment-label">${esc(comment.author)} · <time datetime="${esc(comment.at)}" style="display:inline">${formatTime(comment.at)}</time></span><span class="board-comment-text">${esc(comment.text)}</span></span>`:'';
@@ -91,7 +98,7 @@ function renderList(){
         <section class="board-column" data-kanban-status="${esc(status)}">
           <div class="board-heading">${statusBadge({status})}<span>${cards.length}</span></div>
           ${cards.map(t=>`
-            <article class="board-card" draggable="true" data-kanban-card="${esc(t.id)}" data-kanban-source="${esc(t.status)}">
+            <article class="board-card"${taskColorStyle(t)} draggable="true" data-kanban-card="${esc(t.id)}" data-kanban-source="${esc(t.status)}">
               <div class="board-card-heading"><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><span class="board-grip" title="Перетащить карточку" aria-hidden="true">⋮⋮</span></div>
               <button type="button" class="board-card-open" data-task="${esc(t.id)}">
                 <strong>${esc(t.title)}</strong>${person(t.holder)}<span class="muted board-card-stage">${esc(t.stage||'Этап не указан')}</span>
@@ -104,7 +111,7 @@ function renderList(){
     taskList.querySelector('.board').scrollLeft=scrollLeft;
     return;
   }
-  $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showLastComment?'has-last-comment':''}"><thead><tr><th>Задача</th>${showLastComment?'<th>Последний комментарий</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showLastComment?`<td class="task-last-comment">${commentPreview(t.id)||'<span class="muted">Комментариев пока нет</span>'}</td>`:''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
+  $('#task-list').innerHTML=`<div class="table-scroll"><table class="task-table ${showLastComment?'has-last-comment':''}"><thead><tr><th>Задача</th>${showLastComment?'<th>Последний комментарий</th>':''}<th>Срок</th><th>Ответственный</th><th>Статус</th><th>У кого сейчас / этап</th><th></th></tr></thead><tbody>${tasks.map(t=>`<tr data-task-row="${esc(t.id)}"${taskColorStyle(t)}><td><div class="task-name-wrap"><span class="task-drag-handle" role="button" tabindex="0" data-drag-task="${esc(t.id)}" draggable="${sortMode==='manual'}" title="Перетащить для смены приоритета · Alt+↑/↓" aria-label="Изменить порядок задачи ${esc(t.title)}">⋮⋮</span><div><span class="task-id">${esc(t.id.slice(0,8).toUpperCase())}</span><button class="task-title" data-task="${esc(t.id)}">${esc(t.title)}</button>${taskMeta(t)}</div></div></td>${showLastComment?`<td class="task-last-comment">${commentPreview(t.id)||'<span class="muted">Комментариев пока нет</span>'}</td>`:''}<td><span class="due ${overdue(t)?'late':''}">${formatDate(t.due)}</span>${overdue(t)?'<span class="muted" style="color:#bc7770">Просрочена</span>':''}</td><td>${person(t.owner)}</td><td>${statusBadge(t)}</td><td>${esc(t.holder)}<span class="muted">${esc(t.stage||'Этап не указан')}</span></td><td><button class="icon-button row-menu" data-edit="${esc(t.id)}" aria-label="Редактировать задачу" title="Редактировать">${icon('edit')}</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderNavigationCounts() {
   const counts={

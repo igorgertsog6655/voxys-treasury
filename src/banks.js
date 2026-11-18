@@ -1,4 +1,5 @@
 import {addBankContact,compareBankContacts,moveBank,saveBank,saveBankContact,today,BANK_PROFILE_FIELDS,BANK_REPRESENTATIVE_FIELDS} from './model.js';
+import {teamColors,teamColorStyle} from './team-colors.js?v=1';
 import {createPinnedTableHeader} from './pinned-table-header.js?v=bank-scroll-1';
 
 const contactFields = [
@@ -186,7 +187,8 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const active=document.activeElement;
     const focusedName=bankList.contains(activeEditor)?active.name:'';
     const selection=focusedName&&active.selectionStart!==null?[active.selectionStart,active.selectionEnd]:null;
-    const {banks,bankContacts}=getState();
+    const {banks,bankContacts,people}=getState();
+    const colorFor=teamColors(people);
     const latestByBank=new Map();
     for(const contact of bankContacts){
       const latest=latestByBank.get(contact.bankId);
@@ -197,7 +199,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         <thead><tr><th>Банк</th>${[...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
         <tbody>${banks.map(bank=>{
           const latest=latestByBank.get(bank.id);
-          return `<tr data-bank-row="${esc(bank.id)}">
+          return `<tr data-bank-row="${esc(bank.id)}"${teamColorStyle(colorFor('',latest?.contactedBy))}>
             ${inlineCell(bank,['name','Название банка',180])}
             ${BANK_PROFILE_FIELDS.map(field=>inlineCell(bank,field,{fallback:field[0]==='nextStep'?latest?.nextSteps:''})).join('')}
             ${contactColumns.map(field=>inlineCell(bank,field,{contact:latest??null})).join('')}

@@ -1,5 +1,5 @@
 import {teamColors,teamColorStyle} from './team-colors.js?v=1';
-import {createFunctionMatrix} from './function-matrix.js?v=matrix-order-1';
+import {createFunctionMatrix} from './function-matrix.js?v=matrix-sections-1';
 import {createBanksUI} from './banks.js?v=bank-owners-1';
 import {createTaskOrdering} from './task-ordering.js';
 import {createInlineQuestions} from './inline-questions.js?v=action-icons-1';

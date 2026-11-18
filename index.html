@@ -6,8 +6,8 @@
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
   <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=matrix-order-1">
-  <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=matrix-order-1","./src/icons.js":"./src/icons.js?v=action-icons-1"}}</script>
-  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=matrix-order-1"></script>
+  <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=matrix-sections-1","./src/icons.js":"./src/icons.js?v=action-icons-1"}}</script>
+  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=matrix-sections-1"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -83,7 +83,8 @@
             <h2>Функции</h2>
             <ul>
               <li>Добавьте раздел или функцию кнопками над таблицей. Галочка на пересечении функции и сотрудника закрепляет функцию за ним. Функции без исполнителей выделены красным.</li>
-              <li>Перетащите функцию за ⋮⋮, чтобы изменить порядок или перенести её в другой раздел. Пустой раздел можно удалить корзиной.</li>
+              <li>Перетащите функцию за ⋮⋮, чтобы изменить порядок или перенести её в другой раздел.</li>
+              <li>Карандаш переименовывает раздел, корзина удаляет его. Функции переходят в конец предыдущего раздела. Если удаляется первый раздел, они переходят в следующий.</li>
               <li>Перетащите заголовок сотрудника влево или вправо, чтобы поменять порядок столбцов. Порядок сохранится в XLSX.</li>
             </ul>
           </article>

@@ -1,5 +1,5 @@
 import {teamColors,teamColorStyle} from './team-colors.js?v=1';
-import {addFunctionSection,deleteFunctionSection,deleteTreasuryFunction,matrixPeople,moveMatrixPerson,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
+import {deleteFunctionSection,deleteTreasuryFunction,functionSectionDestination,saveFunctionSection,matrixPeople,moveMatrixPerson,moveTreasuryFunction,saveTreasuryFunction,setFunctionAssignment} from './model.js';
 import {createPinnedTableHeader} from './pinned-table-header.js';
 
 export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isFullySaved}) {
@@ -73,8 +73,12 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
           <tr class="matrix-section-row" data-matrix-section-header>
             <th scope="rowgroup"><div class="matrix-function">
               <span>${esc(group.name)} <small>${rows.length}</small></span>
-              ${rows.length?'':`<button type="button" class="icon-button action-icon delete-icon" data-section-delete="${esc(group.id)}"
-                title="Удалить раздел: ${esc(group.name)}" aria-label="Удалить раздел: ${esc(group.name)}">${icon('trash')}</button>`}
+              <div class="matrix-actions">
+                <button type="button" class="icon-button action-icon" data-section-edit="${esc(group.id)}"
+                  title="Переименовать раздел: ${esc(group.name)}" aria-label="Переименовать раздел: ${esc(group.name)}">${icon('edit')}</button>
+                <button type="button" class="icon-button action-icon delete-icon" data-section-delete="${esc(group.id)}"
+                  title="Удалить раздел: ${esc(group.name)}" aria-label="Удалить раздел: ${esc(group.name)}">${icon('trash')}</button>
+              </div>
             </div></th>
             ${columns.length?`<td colspan="${columns.length}">${rows.length?'':'Перетащите функцию сюда'}</td>`:''}
           </tr>
@@ -114,26 +118,26 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     }
   }
 
-  function openEditor(row,{newSection=false}={}) {
+  function openEditor(row,{sectionEditor=false}={}) {
     if(!canEdit())return toast('Редактирование сейчас недоступно. Проверьте статус сохранения.');
     editingId=row?.id||'';
-    sectionMode=newSection;
-    document.getElementById('treasury-function-title').textContent=newSection?'Новый раздел':row?'Изменить функцию':'Новая функция';
-    document.getElementById('matrix-editor-label').textContent=newSection?'Название раздела':'Название функции';
-    document.getElementById('matrix-section-field').hidden=newSection;
+    sectionMode=sectionEditor;
+    document.getElementById('treasury-function-title').textContent=sectionMode?(row?'Переименовать раздел':'Новый раздел'):row?'Изменить функцию':'Новая функция';
+    document.getElementById('matrix-editor-label').textContent=sectionMode?'Название раздела':'Название функции';
+    document.getElementById('matrix-section-field').hidden=sectionMode;
     const sections=getState().functionSections;
     form.elements.sectionId.innerHTML=sections.map(group=>`<option value="${esc(group.id)}">${esc(group.name)}</option>`).join('');
     form.elements.sectionId.value=row?.sectionId||sections[0]?.id||'';
-    form.elements.sectionId.disabled=newSection;
-    form.elements.functionName.maxLength=newSection?120:200;
+    form.elements.sectionId.disabled=sectionMode;
+    form.elements.functionName.maxLength=sectionMode?120:200;
     form.elements.functionName.value=row?.name||'';
-    submit.textContent=newSection?'Добавить раздел':'Сохранить функцию';
+    submit.textContent=sectionMode?(row?'Сохранить раздел':'Добавить раздел'):'Сохранить функцию';
     error.textContent='';
     dialog.showModal();
   }
 
   newFunction.onclick=()=>openEditor();
-  document.getElementById('new-function-section').onclick=()=>openEditor(null,{newSection:true});
+  document.getElementById('new-function-section').onclick=()=>openEditor(null,{sectionEditor:true});
   form.onsubmit=async event=>{
     event.preventDefault();
     if(submit.disabled)return;
@@ -143,24 +147,30 @@ export function createFunctionMatrix({getState,commit,canEdit,toast,esc,icon,isF
     try{
       const state=getState();
       const name=form.elements.functionName.value;
-      const next=sectionMode?addFunctionSection(state,name):
+      const next=sectionMode?saveFunctionSection(state,{id:editingId,name}):
         saveTreasuryFunction(state,{id:editingId,name,sectionId:form.elements.sectionId.value});
       if(next!==state)await commit(next);
       dialog.close();
-      if(next!==state&&isFullySaved())toast(sectionMode?'Раздел добавлен':'Функция сохранена');
+      if(next!==state&&isFullySaved())toast(sectionMode?'Раздел сохранён':'Функция сохранена');
     }catch(err){error.textContent=err.message;}
     finally{submit.disabled=false;}
   };
 
   list.addEventListener('click',async event=>{
-    const sectionButton=event.target.closest('[data-section-delete]');
+    const sectionButton=event.target.closest('[data-section-edit], [data-section-delete]');
     if(sectionButton){
       if(!canEdit())return toast('Дождитесь завершения сохранения.');
-      const id=sectionButton.dataset.sectionDelete;
-      const group=getState().functionSections.find(item=>item.id===id);
-      if(!group||!confirm(`Удалить пустой раздел «${group.name}»?`))return;
+      const state=getState();
+      const id=sectionButton.dataset.sectionEdit||sectionButton.dataset.sectionDelete;
+      const group=state.functionSections.find(item=>item.id===id);
+      if(!group)return;
+      if(sectionButton.dataset.sectionEdit)return openEditor(group,{sectionEditor:true});
       try{
-        await commit(deleteFunctionSection(getState(),id));
+        const next=deleteFunctionSection(state,id);
+        const destination=state.treasuryFunctions.some(row=>row.sectionId===id)?functionSectionDestination(state,id):null;
+        const transfer=destination?` Функции будут перенесены в конец раздела «${destination.name}».`:'';
+        if(!confirm(`Удалить раздел «${group.name}»?${transfer}`))return;
+        await commit(next);
         if(isFullySaved())toast('Раздел удалён');
       }catch(err){toast(err.message);}
       return;

@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import {blankState,hasRecords,saveTask,savePerson,addComment,validateState,safeLink,isDate,saveBank,addBankContact,compareBankContacts,saveTreasuryFunction,deleteTreasuryFunction,setFunctionAssignment} from '../src/model.js';
 import {transitionTask} from '../src/kanban.js';
-import {addFunctionSection,deleteFunctionSection,moveTreasuryFunction} from '../src/model.js';
+import {addFunctionSection,deleteFunctionSection,moveTreasuryFunction,saveFunctionSection} from '../src/model.js';
 import {moveBank,saveBankContact} from '../src/model.js';
 import {encodeWorkbook,decodeWorkbook,toWorkbook} from '../src/workbook.js';
 const context={console,TextDecoder,TextEncoder,Uint8Array,ArrayBuffer,Date,Array};vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js',import.meta.url),'utf8'),context);const X=context.XLSX;
@@ -65,11 +65,10 @@ test('Карточка банка и несколько представител
   assert.equal(migrated.banks[0].statusDate,'');
   assert.deepEqual(migrated.banks[0].representatives,[]);
 });
-test('Порядок и раздел функций сохраняются вместе с отметками, непустой раздел нельзя удалить',()=>{
+test('Порядок, переименование и объединение разделов сохраняют функции и отметки',()=>{
   let state=savePerson(create(),{fullName:'Казначей',email:'groups@example.com',position:'Казначейство'},'Игорь');
   const personId=state.people[0].id;
   state=setFunctionAssignment(state,'cash-position',personId,true);
-  assert.throws(()=>deleteFunctionSection(state,'liquidity'),/пустой раздел/);
   state=moveTreasuryFunction(state,'cash-position','liquidity','cash-forecast',true);
   const inLiquidity=s=>s.treasuryFunctions.filter(row=>row.sectionId==='liquidity').map(row=>row.id);
   assert.deepEqual(inLiquidity(state).slice(0,2),['cash-forecast','cash-position']);
@@ -80,9 +79,21 @@ test('Порядок и раздел функций сохраняются вм�
   state=moveTreasuryFunction(state,'cash-position',sectionId);
   assert.equal(state.treasuryFunctions.find(row=>row.id==='cash-position').sectionId,sectionId);
   assert.deepEqual(decodeWorkbook(encodeWorkbook(state,X),X),state);
-  state=moveTreasuryFunction(state,'cash-position','liquidity');
+  const destination=state.functionSections.at(-2);
+  state=saveFunctionSection(state,{id:sectionId,name:'Переименованный раздел'});
+  assert.equal(state.functionSections.at(-1).name,'Переименованный раздел');
+  assert.throws(()=>saveFunctionSection(state,{id:sectionId,name:destination.name}),/уже есть/);
+  const existing=state.treasuryFunctions.filter(row=>row.sectionId===destination.id).map(row=>row.id);
   state=deleteFunctionSection(state,sectionId);
+  assert.deepEqual(state.treasuryFunctions.filter(row=>row.sectionId===destination.id).map(row=>row.id),[...existing,'cash-position']);
+  assert.deepEqual(decodeWorkbook(encodeWorkbook(state,X),X),state);
   assert.ok(!state.functionSections.some(section=>section.id===sectionId));
+  const [first,second]=state.functionSections;
+  const firstRows=state.treasuryFunctions.filter(row=>row.sectionId===first.id);
+  state=deleteFunctionSection(state,first.id);
+  for(const row of firstRows)assert.equal(state.treasuryFunctions.find(item=>item.id===row.id).sectionId,second.id);
+  while(state.functionSections.length>1)state=deleteFunctionSection(state,state.functionSections[0].id);
+  assert.throws(()=>deleteFunctionSection(state,state.functionSections[0].id),/Создайте другой раздел/);
   assert.deepEqual(state.functionAssignments,[{functionId:'cash-position',personId}]);
 });
 test('Миграция XLSX версии 6 распределяет прежние функции без потери пользовательских записей',()=>{

@@ -187,18 +187,35 @@ export function saveTreasuryFunction(state,{id,name,sectionId}) {
   return next;
 }
 export function addFunctionSection(state,name) {
+  return saveFunctionSection(state,{name});
+}
+export function saveFunctionSection(state,{id,name}) {
   const next=validateState(state);
+  const section=id?next.functionSections.find(item=>item.id===id):null;
+  if(id&&!section)throw Error('Раздел не найден.');
   name=name.trim();
   if(!name||name.length>120)throw Error('Укажите название раздела (до 120 символов).');
-  if(next.functionSections.some(section=>normalizeFunctionName(section.name)===normalizeFunctionName(name)))throw Error('Раздел с таким названием уже есть.');
-  next.functionSections.push({id:uid(),name});
+  if(next.functionSections.some(item=>item.id!==id&&normalizeFunctionName(item.name)===normalizeFunctionName(name)))throw Error('Раздел с таким названием уже есть.');
+  if(section?.name===name)return state;
+  if(section)section.name=name;
+  else next.functionSections.push({id:uid(),name});
   next.revision++;
   return next;
 }
+export function functionSectionDestination(state,id) {
+  const index=state.functionSections.findIndex(section=>section.id===id);
+  if(index<0)throw Error('Раздел не найден.');
+  return state.functionSections[index-1]??state.functionSections[index+1];
+}
 export function deleteFunctionSection(state,id) {
   const next=validateState(state);
-  if(!next.functionSections.some(section=>section.id===id))throw Error('Раздел не найден.');
-  if(next.treasuryFunctions.some(row=>row.sectionId===id))throw Error('Удалить можно только пустой раздел.');
+  const destination=functionSectionDestination(next,id);
+  const moved=next.treasuryFunctions.filter(row=>row.sectionId===id);
+  if(moved.length){
+    if(!destination)throw Error('Создайте другой раздел, чтобы перенести функции.');
+    const remaining=next.treasuryFunctions.filter(row=>row.sectionId!==id);
+    next.treasuryFunctions=[...remaining,...moved.map(row=>({...row,sectionId:destination.id}))];
+  }
   next.functionSections=next.functionSections.filter(section=>section.id!==id);
   next.revision++;
   return next;

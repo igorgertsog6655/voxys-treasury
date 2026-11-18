@@ -240,7 +240,7 @@
 @media(prefers-reduced-motion:reduce){.winter-snowfall{display:none}}
 
 .brand-santa-hat{
-  position:absolute;z-index:1;right:-1%;bottom:calc(100% - 5px);width:22%;height:20px;
+  position:absolute;z-index:1;left:22.5%;bottom:calc(100% - 5px);width:22%;height:20px;
   transform:rotate(-8deg);transform-origin:50% 100%;pointer-events:none;
   filter:drop-shadow(0 1px 1px #233c4d65)
 }

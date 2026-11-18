@@ -238,3 +238,24 @@
   100%{transform:translate3d(var(--drift),100vh,0) rotate(150deg);opacity:0}
 }
 @media(prefers-reduced-motion:reduce){.winter-snowfall{display:none}}
+
+.brand-santa-hat{
+  position:absolute;z-index:1;right:-3%;bottom:calc(100% - 4px);width:25%;height:21px;
+  transform:rotate(10deg);transform-origin:50% 100%;pointer-events:none;
+  filter:drop-shadow(0 1px 1px #233c4d65)
+}
+.brand-santa-hat::before{
+  content:"";position:absolute;inset:0 0 3px;
+  background:linear-gradient(135deg,#ff6a66 8%,#db282f 57%,#9f1726);
+  clip-path:polygon(7% 100%,18% 61%,32% 22%,45% 4%,57% 0,71% 10%,84% 35%,96% 53%,90% 71%,72% 49%,75% 100%)
+}
+.brand-santa-hat::after,.brand-santa-hat i{
+  content:"";position:absolute;background:linear-gradient(#fff 45%,#deebf5);
+  box-shadow:inset 0 -1px #b9d1e0
+}
+.brand-santa-hat::after{bottom:0;left:3%;width:76%;height:6px;border-radius:5px}
+.brand-santa-hat i{right:-3%;top:42%;width:24%;aspect-ratio:1;border-radius:50%}
+@media(max-width:760px){
+  .brand-santa-hat{height:16px;bottom:calc(100% - 3px)}
+  .brand-santa-hat::after{height:5px}
+}

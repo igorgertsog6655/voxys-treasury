@@ -172,3 +172,39 @@
 .matrix-column-grip{color:#677488;letter-spacing:-2px}
 .matrix-table .matrix-column-drop-before{box-shadow:inset 3px 0 #d5a52f}
 .matrix-table .matrix-column-drop-after{box-shadow:inset -3px 0 #d5a52f}
+
+.brand-winter{position:relative;background:linear-gradient(165deg,#e6f0f8 0%,#fff 50%)}
+.brand-winter-mark{position:relative;display:block}
+.brand-snow{position:absolute;inset:0;pointer-events:none}
+.brand-snow i{
+  position:absolute;left:var(--x);top:var(--y,-1px);width:var(--w);height:16%;min-height:2px;
+  border-radius:55% 50% 42% 48%;background:linear-gradient(#fff 35%,#e7f4fc 82%);
+  box-shadow:0 1px 1px #26556f65
+}
+.brand-snow i::after{
+  content:"";position:absolute;top:51%;left:32%;width:24%;height:75%;border-radius:0 0 65% 70%;
+  background:#e7f4fc
+}
+.brand-garland{
+  position:absolute;left:13%;right:13%;bottom:-4px;height:10px;border-bottom:1px solid #487363;
+  border-radius:0 0 50% 50%;display:flex;align-items:flex-end;justify-content:space-around;pointer-events:none
+}
+.brand-garland i{
+  width:5px;height:7px;border-radius:50%;background:#fbc753;box-shadow:0 0 5px #fbc75390;transform:translateY(5px)
+}
+.brand-garland i:nth-child(2n){background:#fe8c91;box-shadow:0 0 5px #fe8c9180}
+.brand-garland i:nth-child(3){background:#9de4d3;box-shadow:0 0 5px #9de4d380}
+.brand-garland i:is(:first-child,:last-child){transform:translateY(3px)}
+
+.winter-snowfall{position:fixed;inset:0;z-index:11;overflow:hidden;pointer-events:none}
+.winter-snowfall i{
+  position:absolute;top:0;left:var(--x);width:var(--size);height:var(--size);border-radius:50%;
+  background:#f7fcff;box-shadow:0 0 2px 1px #6490b86b;
+  animation:winter-snow-fall var(--fall) linear var(--delay) infinite;
+}
+@keyframes winter-snow-fall{
+  0%{transform:translate3d(0,-12px,0);opacity:0}
+  12%,86%{opacity:.62}
+  100%{transform:translate3d(var(--drift),100vh,0);opacity:0}
+}
+@media(prefers-reduced-motion:reduce){.winter-snowfall{display:none}}

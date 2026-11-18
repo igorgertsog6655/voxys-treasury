@@ -240,22 +240,38 @@
 @media(prefers-reduced-motion:reduce){.winter-snowfall{display:none}}
 
 .brand-santa-hat{
-  position:absolute;z-index:1;right:-3%;bottom:calc(100% - 4px);width:25%;height:21px;
-  transform:rotate(10deg);transform-origin:50% 100%;pointer-events:none;
+  position:absolute;z-index:1;right:-1%;bottom:calc(100% - 5px);width:22%;height:20px;
+  transform:rotate(-8deg);transform-origin:50% 100%;pointer-events:none;
   filter:drop-shadow(0 1px 1px #233c4d65)
 }
 .brand-santa-hat::before{
-  content:"";position:absolute;inset:0 0 3px;
+  content:"";position:absolute;inset:0 0 4px;
   background:linear-gradient(135deg,#ff6a66 8%,#db282f 57%,#9f1726);
-  clip-path:polygon(7% 100%,18% 61%,32% 22%,45% 4%,57% 0,71% 10%,84% 35%,96% 53%,90% 71%,72% 49%,75% 100%)
+  clip-path:polygon(3% 100%,12% 70%,24% 40%,37% 16%,52% 4%,62% 2%,72% 9%,82% 25%,90% 44%,97% 55%,88% 69%,75% 50%,69% 43%,77% 100%)
 }
 .brand-santa-hat::after,.brand-santa-hat i{
   content:"";position:absolute;background:linear-gradient(#fff 45%,#deebf5);
   box-shadow:inset 0 -1px #b9d1e0
 }
-.brand-santa-hat::after{bottom:0;left:3%;width:76%;height:6px;border-radius:5px}
-.brand-santa-hat i{right:-3%;top:42%;width:24%;aspect-ratio:1;border-radius:50%}
+.brand-santa-hat::after{bottom:0;left:0;width:82%;height:5px;border-radius:45% 48% 40% 45%}
+.brand-santa-hat i{right:-1%;top:43%;width:23%;aspect-ratio:1;border-radius:50%}
 @media(max-width:760px){
-  .brand-santa-hat{height:16px;bottom:calc(100% - 3px)}
-  .brand-santa-hat::after{height:5px}
+  .brand-santa-hat{height:15px;bottom:calc(100% - 4px)}
+  .brand-santa-hat::after{height:4px}
+}
+
+.brand-winter-mark::before{
+  content:"";position:absolute;left:-3%;right:-3%;bottom:-3px;height:36%;
+  background:
+    radial-gradient(ellipse at 12% 100%,#fdfefe 0 67%,transparent 71%) left bottom/31% 85% no-repeat,
+    radial-gradient(ellipse at 50% 105%,#f7fcff 0 66%,transparent 70%) center bottom/61% 100% no-repeat,
+    radial-gradient(ellipse at 82% 108%,#fff 0 67%,transparent 71%) right bottom/45% 93% no-repeat;
+  filter:drop-shadow(0 1px 1px #6a97b275);
+  pointer-events:none
+}
+.brand-winter-mark img{position:relative;filter:drop-shadow(0 1px 1px #25475852)}
+.brand-winter-mark::after{
+  content:"";position:absolute;left:-2%;right:-2%;bottom:-4px;height:5px;
+  border-radius:45% 48% 45% 40%;background:linear-gradient(178deg,#fff 41%,#e7f3fa);
+  pointer-events:none
 }

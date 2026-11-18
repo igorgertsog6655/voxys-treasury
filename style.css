@@ -160,3 +160,9 @@
 .user-guide-card ul{margin:9px 0 0;padding-inline-start:20px;font-size:13px}
 .user-guide-card li+li{margin-top:7px}
 @media(max-width:760px){.user-guide-grid{grid-template-columns:minmax(0,1fr)}}
+
+.task-registry{overflow:clip}
+#task-registry-controls{position:sticky;top:0;z-index:4;background:#fff}
+.task-registry .task-table thead,.task-registry .board-heading{position:relative;z-index:2}
+.task-registry .board-heading{background:#f3f5f8;padding:6px 0}
+.task-registry .board-drop-target .board-heading{background:#fff6d8}

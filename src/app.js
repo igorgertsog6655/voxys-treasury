@@ -69,7 +69,41 @@ function filteredTasks(){
   const q=$('#search').value.toLocaleLowerCase('ru'),status=$('#filter-status').value,owner=$('#filter-owner').value,due=$('#filter-due').value;const week=new Date(today()+'T12:00:00Z');week.setUTCDate(week.getUTCDate()+6);const end=week.toISOString().slice(0,10);return state.tasks.filter(t=>(!excludeCompleted||t.status!=='Завершена')&&(!q||[t.title,t.description,t.questions,t.stage,t.nextStep,t.owner,t.holder].join(' ').toLocaleLowerCase('ru').includes(q))&&(!status||t.status===status)&&(!owner||t.owner===owner)&&(!due||(due==='overdue'?overdue(t):t.status!=='Завершена'&&t.due>=today()&&t.due<=end))).sort(sortMode==='manual'?(a,b)=>a.sortOrder-b.sortOrder:(a,b)=>(a.status==='Завершена')-(b.status==='Завершена')||(a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')||a.createdAt.localeCompare(b.createdAt));}
 function renderStats(){const defs=[['Всего задач',state.tasks.length,'tasks','all','В реестре',''],['Бэклог',state.tasks.filter(t=>t.status==='Бэклог').length,'list','Бэклог','Запланированы',''],['В работе',state.tasks.filter(t=>t.status==='В работе').length,'clock','В работе','На исполнении','work'],['Завершены',state.tasks.filter(t=>t.status==='Завершена').length,'check','Завершена','Результат зафиксирован','done'],['Просрочены',state.tasks.filter(overdue).length,'alert','late','Требуют внимания','late']];$('#stats').innerHTML=defs.map(([label,n,i,key,hint,cls])=>`<button class="stat ${cls} ${($('#filter-status').value===key||(key==='late'&&$('#filter-due').value==='overdue'))?'selected':''}" data-stat="${key}"><span class="stat-top">${label}<span class="stat-symbol">${icon(i)}</span></span><span class="number">${n}</span><span class="hint">${hint}</span></button>`).join('');}
 function taskMeta(t){const count=state.comments.filter(c=>c.taskId===t.id).length;return `<span class="task-meta"><span><i class="priority-dot ${t.priority==='Высокий'?'high':''}"></i>${esc(t.priority)}</span>${count?`<span>${count} комм.</span>`:''}${t.links.length?`<span>${t.links.length} ссыл.</span>`:''}</span>`;}
+const taskRegistryControls=$('#task-registry-controls');
+const taskRegistryList=$('#task-list');
+let taskHeaderFrame=0;
+const taskHeadingOffsets=new WeakMap();
+
+function pinTaskHeadings(){
+  taskHeaderFrame=0;
+  if(!taskRegistryList.getClientRects().length)return;
+  const controlsBottom=taskRegistryControls.getBoundingClientRect().bottom;
+  const headings=taskRegistryList.querySelectorAll('.task-table thead, .board-heading');
+  const offsets=[...headings].map(heading=>{
+    const bounds=heading.getBoundingClientRect();
+    const top=bounds.top-(taskHeadingOffsets.get(heading)||0);
+    const bottom=heading.parentElement.getBoundingClientRect().bottom;
+    return Math.max(0,Math.min(controlsBottom-top,bottom-top-bounds.height));
+  });
+  headings.forEach((heading,index)=>{
+    const offset=offsets[index];
+    if(offset===(taskHeadingOffsets.get(heading)||0))return;
+    heading.style.transform=offset?`translateY(${offset}px)`:'';
+    taskHeadingOffsets.set(heading,offset);
+  });
+}
+
+function scheduleTaskHeadings(){
+  if(!taskHeaderFrame)taskHeaderFrame=requestAnimationFrame(pinTaskHeadings);
+}
+
+const taskHeaderObserver=new ResizeObserver(scheduleTaskHeadings);
+taskHeaderObserver.observe(taskRegistryControls);
+taskHeaderObserver.observe(taskRegistryList);
+window.addEventListener('scroll',scheduleTaskHeadings,{passive:true});
+
 function renderList(){
+  scheduleTaskHeadings();
   hideCompleted.closest('label').hidden=view!=='table';
   if(view==='table'&&$('#filter-status').value==='Завершена')hideCompleted.checked=false;
   $('#show-task-last-comment').closest('label').hidden=view!=='table';const tasks=filteredTasks();$('#record-count').textContent=`Показано ${tasks.length} из ${state.tasks.length}`;if(!tasks.length){$('#task-list').innerHTML=`<div class="empty"><div class="empty-icon">${icon(state.tasks.length?'search':'tasks')}</div><h3>${state.tasks.length?'Задачи не найдены':'В этом браузере задачи ещё не загружены'}</h3><p>${state.tasks.length?'Попробуйте изменить запрос или сбросить фильтры.':'Подключите рабочий XLSX на GitHub — задачи будут загружаться автоматически. Для первоначального переноса можно открыть локальный XLSX.'}</p><button class="${state.tasks.length?'':'primary'}" id="empty-action">${icon(state.tasks.length?'reset':'plus')}${state.tasks.length?'Сбросить фильтры':'Загрузить задачи'}</button></div>`;$('#empty-action').onclick=()=>state.tasks.length?resetFilters():$('#github-connect').click();return;}

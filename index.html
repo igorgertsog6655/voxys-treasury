@@ -5,9 +5,9 @@
   <meta name="theme-color" content="#20252b">
   <meta name="description" content="Рабочее пространство директора Казначейства: задачи, сроки, ответственные и история в одном XLSX.">
   <title>Казначейство · VOXYS</title>
-  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=user-guide-1">
+  <link rel="icon" href="assets/voxys-logo.png"><link rel="stylesheet" href="style.css?v=task-sticky-1">
   <script type="importmap">{"imports":{"./src/model.js":"./src/model.js?v=bank-owners-1","./src/icons.js":"./src/icons.js?v=action-icons-1"}}</script>
-  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=bank-owners-1"></script>
+  <script src="vendor/xlsx.full.min.js" defer></script><script type="module" src="src/app.js?v=task-sticky-1"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -38,9 +38,11 @@
         <div class="filebar"><div class="filebar-icon" data-icon="file"></div><div class="filebar-text"><strong id="file-title">Единый файл учёта</strong><span id="file-status" aria-live="polite">Подключите XLSX для автоматического сохранения</span></div><div class="file-actions"><button id="github-connect" class="subtle">GitHub XLSX</button><button id="github-refresh" class="subtle">Обновить с GitHub</button><button id="connect-file" class="subtle"><span data-icon="link"></span> Подключить XLSX</button><button id="import-file" class="subtle"><span data-icon="upload"></span> Открыть XLSX</button><button id="export-file"><span data-icon="download"></span> Скачать XLSX</button></div></div>
         <div id="file-warning" class="notice">Пока файл не подключён, записи сохраняются в этом браузере. Чтобы передать все данные, скачайте XLSX.</div>
         <div class="stats" id="stats"></div>
-        <section class="registry" aria-label="Реестр задач">
+        <section class="registry task-registry" aria-label="Реестр задач">
+          <div id="task-registry-controls">
           <div class="registry-top"><div class="tabs"><button class="tab active" data-view="table"><span data-icon="list"></span> Список</button><button class="tab" data-view="board"><span data-icon="board"></span> Канбан</button></div><label class="registry-question-toggle"><input type="checkbox" id="show-task-last-comment"> Показывать последний комментарий</label><span class="record-count" id="record-count"></span></div>
           <div class="filters"><select id="task-sort" aria-label="Сортировка задач"><option value="manual">Мой порядок</option><option value="due">По сроку</option></select><label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Поиск по задачам и пояснениям…" aria-label="Поиск задач"></label><select id="filter-status" aria-label="Статус"><option value="">Все статусы</option></select><select id="filter-owner" aria-label="Ответственный"><option value="">Все ответственные</option></select><select id="filter-due" aria-label="Срок"><option value="">Все сроки</option><option value="overdue">Просрочены</option><option value="week">Ближайшие 7 дней</option></select><label class="registry-question-toggle"><input type="checkbox" id="hide-completed"> Убрать завершённые</label><button class="icon-button" id="reset-filters" title="Сбросить фильтры" aria-label="Сбросить фильтры"><span data-icon="reset"></span></button></div>
+          </div>
           <div id="task-list"></div>
           <div class="registry-foot"><span><span class="tiny-dot"></span> История изменений сохраняется по каждой задаче</span><span>Приоритет: перетащите строку за ⋮⋮</span></div>
         </section>

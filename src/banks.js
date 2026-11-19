@@ -182,7 +182,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const description=esc(`${label}: ${bank.name}`);
     if(draft?.id===bank.id&&draft.field===field){
       return `<td><form class="bank-inline-form">
-        ${inlineInput(field,limit,'value',draft.value,description,field==='name'||contactColumns.some(([key])=>key===field))}
+        ${inlineInput(field,limit,'value',draft.value,description,field==='name'||(field!=='nextSteps'&&contactColumns.some(([key])=>key===field)))}
         ${inlineActions()}
       </form></td>`;
     }
@@ -217,13 +217,15 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     }
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
-        <thead><tr><th>Банк</th>${[ownerField,...BANK_PROFILE_FIELDS,...contactColumns].map(([,label])=>`<th>${label}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Банк</th>${[ownerField,...BANK_PROFILE_FIELDS,...contactColumns].map(([key,label])=>`<th>${key==='nextStep'?'Дальнейшие шаги':label}</th>`).join('')}</tr></thead>
         <tbody>${banks.map(bank=>{
           const latest=latestByBank.get(bank.id);
           return `<tr data-bank-row="${esc(bank.id)}"${teamColorStyle(bank.ownerId?colorFor(bank.ownerId):'')}>
             ${inlineCell(bank,['name','Название банка',180])}
             ${inlineCell(bank,ownerField)}
-            ${BANK_PROFILE_FIELDS.map(field=>inlineCell(bank,field,{fallback:field[0]==='nextStep'?latest?.nextSteps:''})).join('')}
+            ${BANK_PROFILE_FIELDS.map(field=>field[0]==='nextStep'
+              ?inlineCell(bank,latest?contactFields.find(([key])=>key==='nextSteps'):['nextStep','Дальнейшие шаги',3000],latest?{contact:latest}:{})
+              :inlineCell(bank,field)).join('')}
             ${contactColumns.map(field=>inlineCell(bank,field,{contact:latest??null})).join('')}
           </tr>`;
         }).join('')}</tbody>
@@ -324,7 +326,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const bank=state.banks.find(item=>item.id===button.dataset.bankInline);
     if(!bank)return;
     const field=button.dataset.bankField;
-    const isContact=contactColumns.some(([key])=>key===field);
+    const isContact=field==='nextSteps'||contactColumns.some(([key])=>key===field);
     const contact=state.bankContacts.find(item=>item.id===button.dataset.contactId&&item.bankId===bank.id);
     if(isContact&&(!contact||field==='contactedBy')){
       if(draft)closeInline();

@@ -275,3 +275,9 @@
   border-radius:45% 48% 45% 40%;background:linear-gradient(178deg,#fff 41%,#e7f3fa);
   pointer-events:none
 }
+
+/* Quick contact action beside each bank name. */
+.bank-add-contact{flex:none;width:28px;height:28px;padding:4px;border:1px solid #c85a00;border-radius:6px;background:#e87513;color:#fff}
+.bank-add-contact:hover{background:#c85a00;border-color:#ae4d00}
+.bank-add-contact:focus-visible{outline:3px solid #843a00;outline-offset:2px}
+.bank-add-contact svg{width:17px;height:17px;stroke-width:2.4}

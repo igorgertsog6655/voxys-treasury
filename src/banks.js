@@ -199,7 +199,8 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     if(field==='name')return `<td><div class="bank-name-cell">
       <span class="bank-grip" draggable="true" role="button" tabindex="0" data-bank-drag="${esc(bank.id)}"
         aria-label="Переместить банк: ${esc(bank.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
-      <button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>${edit}
+      <button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>
+      <button type="button" class="bank-add-contact" data-add-bank-contact="${esc(bank.id)}" title="Добавить контакт" aria-label="Добавить контакт: ${esc(bank.name)}">${icon('plus')}</button>${edit}
     </div></td>`;
     return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
   }
@@ -540,6 +541,13 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
   });
   document.getElementById('new-bank').onclick=()=>openBankEditor();
   section.addEventListener('click',event=>{
+    const add=event.target.closest('[data-add-bank-contact]');
+    if(add){
+      if(draft)return toast('Сохраните или отмените правку в открытой ячейке.');
+      const bank=getState().banks.find(item=>item.id===add.dataset.addBankContact);
+      if(bank)openContactEditor(bank);
+      return;
+    }
     const bank=event.target.closest('[data-bank]');
     if(bank)showDetails(bank.dataset.bank);
   });

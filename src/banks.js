@@ -201,10 +201,7 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         aria-label="Переместить банк: ${esc(bank.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
       <button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>
       <button type="button" class="bank-add-contact" data-add-bank-contact="${esc(bank.id)}" title="Добавить контакт" aria-label="Добавить контакт: ${esc(bank.name)}">${icon('plus')}</button>${edit}
-    </div><label class="bank-factoring">
-      <input type="checkbox" data-bank-factoring="${esc(bank.id)}" aria-label="Обсуждаем факторинг — ${esc(bank.name)}"${bank.factoring?' checked':''}>
-      Обсуждаем факторинг
-    </label></td>`;
+    </div></td>`;
     return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
   }
   function render() {
@@ -221,11 +218,13 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     }
     bankList.innerHTML=banks.length?`
       <table class="bank-table">
-        <thead><tr><th>Банк</th>${[ownerField,...BANK_PROFILE_FIELDS,...contactColumns].map(([key,label])=>`<th>${key==='nextStep'?'Дальнейшие шаги':label}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Банк</th><th scope="col" class="bank-factoring" title="Обсуждаем факторинг">Факторинг</th>${[ownerField,...BANK_PROFILE_FIELDS,...contactColumns].map(([key,label])=>`<th>${key==='nextStep'?'Дальнейшие шаги':label}</th>`).join('')}</tr></thead>
         <tbody>${banks.map(bank=>{
           const latest=latestByBank.get(bank.id);
           return `<tr data-bank-row="${esc(bank.id)}"${teamColorStyle(bank.ownerId?colorFor(bank.ownerId):'')}>
             ${inlineCell(bank,['name','Название банка',180])}
+            <td class="bank-factoring"><input type="checkbox" data-bank-factoring="${esc(bank.id)}"
+              aria-label="Обсуждаем факторинг — ${esc(bank.name)}"${bank.factoring?' checked':''}></td>
             ${inlineCell(bank,ownerField)}
             ${BANK_PROFILE_FIELDS.map(field=>field[0]==='nextStep'
               ?inlineCell(bank,latest?contactFields.find(([key])=>key==='nextSteps'):['nextStep','Дальнейшие шаги',3000],latest?{contact:latest}:{})

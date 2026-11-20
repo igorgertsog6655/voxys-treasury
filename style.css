@@ -6,13 +6,13 @@
  .task-name-wrap{display:flex;gap:9px;align-items:flex-start}.task-name-wrap>div{min-width:0}.task-drag-handle{flex:none;cursor:grab;user-select:none;color:#a4acb6;font-size:18px;letter-spacing:-4px;padding:12px 6px 12px 0;line-height:1}.task-drag-handle[draggable="false"]{cursor:default;opacity:.35}.task-drag-handle:focus-visible{outline:2px solid #cda744;outline-offset:2px}.task-dragging{opacity:.4}.task-table tr.drop-before td{box-shadow:inset 0 3px #dcad37}.task-table tr.drop-after td{box-shadow:inset 0 -3px #dcad37}#task-sort{width:140px}
 
 .bank-heading,.bank-history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.bank-table{min-width:136rem;table-layout:fixed}
+.bank-table{min-width:142rem;table-layout:fixed}
 .bank-table th{white-space:normal;overflow-wrap:anywhere}
 .bank-table th:first-child{width:20em}
-.bank-table th:nth-child(2),.bank-table th:nth-child(3){width:18em}
-.bank-table th:nth-child(4),.bank-table th:nth-child(5){width:26em}
-.bank-table th:nth-child(6){width:27.5em}
-.bank-table th:nth-child(7),.bank-table th:nth-child(8){width:21em}
+.bank-table th:nth-child(3),.bank-table th:nth-child(4){width:18em}
+.bank-table th:nth-child(5),.bank-table th:nth-child(6){width:26em}
+.bank-table th:nth-child(7){width:27.5em}
+.bank-table th:nth-child(8),.bank-table th:nth-child(9){width:21em}
 .bank-table th:last-child{width:36em}
 .bank-table td{vertical-align:top;overflow-wrap:anywhere}
 .bank-name{border:0;background:none;padding:0;text-align:left;font:inherit;font-weight:600;color:#23614e;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
@@ -282,5 +282,6 @@
 .bank-add-contact:focus-visible{outline:3px solid #843a00;outline-offset:2px}
 .bank-add-contact svg{width:17px;height:17px;stroke-width:2.4}
 
-.bank-factoring{display:flex;align-items:center;gap:6px;margin:6px 0 0 20px;font-size:11px;color:#4d606d;cursor:pointer}
-.bank-factoring input{width:14px;height:14px;margin:0;flex:none;accent-color:#197658;cursor:pointer}
+.bank-table th.bank-factoring{width:100px}
+.bank-table .bank-factoring{text-align:center;vertical-align:middle}
+.bank-factoring input{width:18px;height:18px;margin:0;accent-color:#9a6d04;cursor:pointer}

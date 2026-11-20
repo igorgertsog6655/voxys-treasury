@@ -201,7 +201,10 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
         aria-label="Переместить банк: ${esc(bank.name)}" title="Перетащить · Alt + ↑ или ↓">⋮⋮</span>
       <button class="bank-name" type="button" data-bank="${esc(bank.id)}">${esc(bank.name)}</button>
       <button type="button" class="bank-add-contact" data-add-bank-contact="${esc(bank.id)}" title="Добавить контакт" aria-label="Добавить контакт: ${esc(bank.name)}">${icon('plus')}</button>${edit}
-    </div></td>`;
+    </div><label class="bank-factoring">
+      <input type="checkbox" data-bank-factoring="${esc(bank.id)}" aria-label="Обсуждаем факторинг — ${esc(bank.name)}"${bank.factoring?' checked':''}>
+      Обсуждаем факторинг
+    </label></td>`;
     return `<td>${edit}${!value&&fallback?`<small class="bank-summary muted">Из последнего контакта: ${esc(fallback)}</small>`:''}</td>`;
   }
   function render() {
@@ -316,6 +319,21 @@ export function createBanksUI({getState,commit,canEdit,isFullySaved,toast,esc,fo
     const row=grip.closest('[data-bank-row]'),down=event.key==='ArrowDown';
     const target=down?row.nextElementSibling:row.previousElementSibling;
     if(target?.dataset.bankRow)void reorder(grip.dataset.bankDrag,target.dataset.bankRow,down,true);
+  });
+  bankList.addEventListener('change',async event=>{
+    const checkbox=event.target.closest('[data-bank-factoring]');
+    if(!checkbox)return;
+    const state=getState();
+    const bank=state.banks.find(item=>item.id===checkbox.dataset.bankFactoring);
+    if(!bank)return;
+    try{
+      if(!canEdit())throw Error('Дождитесь завершения сохранения.');
+      const next=saveBank(state,{id:bank.id,name:bank.name,factoring:checkbox.checked});
+      if(next!==state)await commit(next);
+    }catch(err){
+      checkbox.checked=Boolean(bank.factoring);
+      toast(err.message);
+    }
   });
   bankList.addEventListener('click',event=>{
     if(event.target.closest('[data-bank-inline-cancel]')&&draft&&!draft.saving)return closeInline();

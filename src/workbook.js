@@ -9,7 +9,7 @@ const questionFields={questions:'Вопросы для уточнения'};
 const orderFields={sortOrder:'Порядок приоритета'};
 const bankFields={id:'ID банка',name:'Банк'};
 const bankProfileFields={...Object.fromEntries(BANK_PROFILE_FIELDS.map(([key,label])=>[key,label])),statusDate:'Статус обновлён'};
-const optionalBankFields={ownerId:'ID основного владельца'};
+const optionalBankFields={ownerId:'ID основного владельца',factoring:'Обсуждаем факторинг'};
 const optionalBankContactFields={contactedByIds:'ID сотрудников контакта'};
 const bankRepresentativeFields={bankId:'ID банка',...Object.fromEntries(BANK_REPRESENTATIVE_FIELDS.map(([key,label])=>[key,label]))};
 const bankContactFields={id:'ID контакта',bankId:'ID банка',date:'Дата контакта',contactedBy:'Кто контактировал',counterparty:'С кем контактировали',outcome:'Статус / договорённости',nextSteps:'Дальнейшие шаги',createdAt:'Добавлено в'};
@@ -34,7 +34,7 @@ export function toWorkbook(state,X=globalThis.XLSX) {
   const links=state.tasks.flatMap(t=>t.links.map(url=>({taskId:t.id,url})));
   X.utils.book_append_sheet(wb,sheet(links,{taskId:'ID задачи',url:'Ссылка'},X),'Результаты');
   X.utils.book_append_sheet(wb,sheet(state.people.map(p=>({...p,active:p.active?'Да':'Нет'})),{...personFields,...optionalPersonFields},X),'Исполнители');
-  X.utils.book_append_sheet(wb,sheet(state.banks,{...bankFields,...bankProfileFields,...optionalBankFields},X),'Банки');
+  X.utils.book_append_sheet(wb,sheet(state.banks.map(bank=>({...bank,factoring:bank.factoring?'Да':''})),{...bankFields,...bankProfileFields,...optionalBankFields},X),'Банки');
   const representatives=state.banks.flatMap(bank=>bank.representatives.map(person=>({bankId:bank.id,...person})));
   X.utils.book_append_sheet(wb,sheet(representatives,bankRepresentativeFields,X),'Контактные лица банков');
   const contacts=state.bankContacts.map(c=>({...c,date:new Date(`${c.date}T00:00:00Z`),contactedByIds:c.contactedByIds?JSON.stringify(c.contactedByIds):''}));
@@ -86,9 +86,10 @@ export function decodeWorkbook(bytes,X=globalThis.XLSX) {
   if(version>=4){const order=readRows(wb,'Задачи',orderFields,X);for(let i=0;i<s.tasks.length;i++){if(order[i].sortOrder==='')throw Error('Не указан порядок задачи.');s.tasks[i].sortOrder=Number(order[i].sortOrder);}}
   if(version>=5){
     const fields=version>=8?{...bankFields,...bankProfileFields}:bankFields;
-    s.banks=readRows(wb,'Банки',fields,X,optionalBankFields).map(({ownerId,...row})=>({
+    s.banks=readRows(wb,'Банки',fields,X,optionalBankFields).map(({ownerId,factoring,...row})=>({
       ...Object.fromEntries(Object.entries(row).map(([key,value])=>[key,key==='statusDate'?readDate(value,X):String(value)])),
-      ...(ownerId!==''?{ownerId:String(ownerId)}:{})
+      ...(ownerId!==''?{ownerId:String(ownerId)}:{}),
+      ...(factoring==='Да'?{factoring:true}:{})
     }));
     s.bankContacts=readRows(wb,'Контакты с банками',bankContactFields,X,optionalBankContactFields).map(({contactedByIds,...c})=>({
       ...Object.fromEntries(Object.entries(c).map(([key,value])=>[key,String(value)])),

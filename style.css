@@ -281,3 +281,6 @@
 .bank-add-contact:hover{background:#c85a00;border-color:#ae4d00}
 .bank-add-contact:focus-visible{outline:3px solid #843a00;outline-offset:2px}
 .bank-add-contact svg{width:17px;height:17px;stroke-width:2.4}
+
+.bank-factoring{display:flex;align-items:center;gap:6px;margin:6px 0 0 20px;font-size:11px;color:#4d606d;cursor:pointer}
+.bank-factoring input{width:14px;height:14px;margin:0;flex:none;accent-color:#197658;cursor:pointer}

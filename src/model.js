@@ -288,6 +288,7 @@ export const BANK_REPRESENTATIVE_FIELDS=[
   ['name','Контактное лицо',250],['position','Должность',250],['phone','Телефон',180],['email','Email',254]
 ];
 function validateBank(bank) {
+  if(bank.factoring!==undefined&&typeof bank.factoring!=='boolean')throw Error('Некорректная отметка о факторинге.');
   if(typeof bank.name!=='string'||!bank.name.trim()||bank.name.length>180)throw Error('Укажите название банка (до 180 символов).');
   for(const [key,label,limit] of BANK_PROFILE_FIELDS){
     if(typeof bank[key]!=='string'||bank[key].length>limit)throw Error(`Проверьте поле «${label}» (до ${limit} символов).`);
@@ -335,6 +336,8 @@ export function saveBank(state,input) {
     if(!owner||(ownerId!==previous?.ownerId&&!owner.active))throw Error('Выберите основного владельца из команды.');
     bank.ownerId=ownerId;
   }
+  const factoring=input.factoring??previous?.factoring;
+  if(factoring!==undefined&&factoring!==false)bank.factoring=factoring;
   validateBank(bank);
   if(next.banks.some(item=>item.id!==bank.id&&item.name.trim().toLocaleLowerCase('ru')===bank.name.toLocaleLowerCase('ru')))throw Error('Банк с таким названием уже есть.');
   if(previous){
